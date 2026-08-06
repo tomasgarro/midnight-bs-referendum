@@ -1,0 +1,29 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+managed/
+.cache/
+.turbo/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Temporary smoke-test material
+tmp/
+coverage/
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Compact/compiler artifacts that should be regenerated from source
+*.zkir
+*.key
+*.pk
+*.vk
