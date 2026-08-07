@@ -1,0 +1,118 @@
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// This first contract slice proves eligibility membership and one-vote-only
+// behavior. See the README in this directory for the remaining tally privacy
+// work required before calling the demo production-complete.
+
+export enum Choice {
+  YES,
+  NO,
+}
+
+// Role keys are committed during deployment. The corresponding secrets are
+// supplied as witnesses by the issuer and organizer applications.
+export sealed ledger issuerKey: Bytes<32>;
+export sealed ledger organizerKey: Bytes<32>;
+export sealed ledger eventId: Bytes<32>;
+
+// A scalar eligibleRoot cannot contain a growing voter registry. The historic
+// Merkle tree is the source of truth; its root is read by the TypeScript driver
+// when it builds a voter membership witness.
+export ledger eligibleVoters: HistoricMerkleTree<10, Bytes<32>>;
+export ledger spentNullifiers: Set<Bytes<32>>;
+export ledger tally: Map<Choice, Uint<32>>;
+export ledger closed: Boolean;
+export ledger issuedVoters: Counter;
+
+witness issuerSecret(): Bytes<32>;
+witness organizerSecret(): Bytes<32>;
+witness voterSecret(): Bytes<32>;
+witness voterPath(): MerkleTreePath<10, Bytes<32>>;
+
+circuit roleKey(domain: Bytes<32>, secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([domain, secret]);
+}
+
+constructor(
+  initialIssuerSecret: Bytes<32>,
+  initialOrganizerSecret: Bytes<32>,
+  referendumEventId: Bytes<32>,
+) {
+  issuerKey = disclose(
+    roleKey(pad(32, "referendum:issuer:"), initialIssuerSecret)
+  );
+  organizerKey = disclose(
+    roleKey(pad(32, "referendum:organizer"), initialOrganizerSecret)
+  );
+  eventId = disclose(referendumEventId);
+
+  tally.insert(Choice.YES, 0);
+  tally.insert(Choice.NO, 0);
+  closed = false;
+}
+
+// Camino A and Camino B both call this circuit. Only the issuer witness can
+// add a commitment, so the bridge implementation can change without changing
+// the voter circuit.
+export circuit issue(commitment: Bytes<32>): [] {
+  assert(
+    roleKey(pad(32, "referendum:issuer:"), issuerSecret()) == issuerKey,
+    "Only the eligibility issuer can issue commitments"
+  );
+  assert(!eligibleVoters.isFull(), "The eligibility tree is full");
+
+  eligibleVoters.insert(disclose(commitment));
+  issuedVoters.increment(1);
+}
+
+// The voter proves membership without revealing the commitment or secret.
+// The nullifier is the only voter-derived value intentionally written to the
+// public ledger, which prevents replay without linking the voter identity.
+export circuit castVote(choice: Choice): [] {
+  assert(!closed, "Voting is already closed");
+
+  const secret = voterSecret();
+  const path = voterPath();
+  const commitment = persistentHash<Vector<2, Bytes<32>>>([
+    pad(32, "referendum:commitment:"),
+    secret,
+  ]);
+
+  assert(path.leaf == commitment, "The membership leaf does not match");
+  assert(
+    eligibleVoters.checkRoot(
+      disclose(merkleTreePathRoot<10, Bytes<32>>(path))
+    ),
+    "The voter is not eligible for this referendum"
+  );
+
+  const nullifier = persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "referendum:nullifier:"),
+    secret,
+    eventId,
+  ]);
+  assert(
+    !spentNullifiers.member(disclose(nullifier)),
+    "This voter has already voted in this referendum"
+  );
+
+  spentNullifiers.insert(disclose(nullifier));
+
+  // This is intentionally the temporary public-tally scaffold. Since Compact
+  // ledger state is public, disclose(choice) also makes the selected bucket
+  // observable. Replace this with encrypted ballot commitments before the
+  // product claims tally secrecy before closeVote().
+  const currentTally = tally.lookup(disclose(choice));
+  tally.insert(disclose(choice), currentTally + 1 as Uint<32>);
+}
+
+export circuit closeVote(): [] {
+  assert(
+    roleKey(pad(32, "referendum:organizer"), organizerSecret()) == organizerKey,
+    "Only the organizer can close the referendum"
+  );
+  assert(!closed, "The referendum is already closed");
+  closed = true;
+}

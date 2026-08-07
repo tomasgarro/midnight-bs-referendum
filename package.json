@@ -1,0 +1,27 @@
+{
+  "name": "midnight-referendum",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "ui",
+    "api"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "compile": "compact compile contracts/referendum/referendum.compact contracts/referendum/managed/referendum",
+    "test:sim": "vitest run contracts/referendum/referendum.test.ts",
+    "validate:contract": "yarn compile && yarn test:sim",
+    "build": "yarn workspace midnight-referendum-api build && yarn workspace midnight-referendum-ui build",
+    "test": "yarn test:sim && yarn workspace midnight-referendum-ui test"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "typescript": "^5.7.0",
+    "vitest": "4.1.0"
+  },
+  "packageManager": "yarn@1.22.22"
+}
