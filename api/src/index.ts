@@ -86,6 +86,103 @@ function previewSafeIndexerProvider(
   };
 }
 
+export interface RelayerProviderOptions {
+  /** Base URL of the sponsored relayer, e.g. http://localhost:8790 */
+  relayerUrl: string;
+  /**
+   * Required in relayer mode. With no wallet in the flow there is nothing to
+   * delegate proving to, so the browser must reach a proof server directly.
+   */
+  proofServerUri: string;
+  networkId: string;
+  indexerUri: string;
+  indexerWsUri: string;
+  zkConfigBaseUrl?: string;
+}
+
+async function relayerJson<T>(url: string, body?: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: body === undefined ? "GET" : "POST",
+    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`El relayer respondió ${response.status}. ${detail}`.trim());
+  }
+  return (await response.json()) as T;
+}
+
+/**
+ * Wallet-less provider set: the browser proves locally and a sponsored relayer
+ * pays the fee and submits.
+ *
+ * `castVote` is authorised by Merkle membership and the nullifier, never by
+ * the submitter, so the relayer funds the transaction without gaining any say
+ * over the ballot. It does learn the nullifier and the caller's IP; it cannot
+ * learn the choice, which stays sealed until reveal.
+ */
+export async function createRelayerProviders(
+  options: RelayerProviderOptions,
+): Promise<AppProviders> {
+  setNetworkId(options.networkId as Parameters<typeof setNetworkId>[0]);
+
+  const base = options.relayerUrl.replace(/\/$/, "");
+  const keys = await relayerJson<{ coinPublicKey: string; encryptionPublicKey: string }>(
+    `${base}/keys`,
+  );
+
+  const publicDataProvider = previewSafeIndexerProvider(
+    indexerPublicDataProvider(options.indexerUri, options.indexerWsUri),
+  );
+  const privateStateProvider =
+    typeof window === "undefined"
+      ? inMemoryPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>()
+      : browserPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>();
+  const browserOrigin = typeof window === "undefined" ? "" : window.location.origin;
+  const zkConfigProvider = new FetchZkConfigProvider<ImpureCircuitKeys>(
+    options.zkConfigBaseUrl ?? `${browserOrigin}/managed/referendum`,
+    fetch.bind(globalThis),
+  );
+  const proofProvider = httpClientProofProvider<ImpureCircuitKeys>(
+    options.proofServerUri,
+    zkConfigProvider,
+  );
+
+  const walletProvider: WalletProvider = {
+    getCoinPublicKey: () => keys.coinPublicKey,
+    getEncryptionPublicKey: () => keys.encryptionPublicKey,
+    balanceTx: async (tx, _ttl) => {
+      const { tx: balancedHex } = await relayerJson<{ tx: string }>(`${base}/balance`, {
+        tx: toHex(tx.serialize()),
+      });
+      return Transaction.deserialize(
+        "signature",
+        "proof",
+        "binding",
+        fromHex(balancedHex),
+      ) satisfies FinalizedTransaction;
+    },
+  };
+  const midnightProvider: MidnightProvider = {
+    submitTx: async (tx) => {
+      const { txId } = await relayerJson<{ txId: string }>(`${base}/submit`, {
+        tx: toHex(tx.serialize()),
+      });
+      return txId;
+    },
+  };
+
+  return {
+    privateStateProvider,
+    publicDataProvider,
+    zkConfigProvider,
+    proofProvider,
+    walletProvider,
+    midnightProvider,
+  };
+}
+
 export async function createProviders(
   api: ConnectedAPI,
   options: ProviderOptions = {},

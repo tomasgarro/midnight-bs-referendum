@@ -12,6 +12,8 @@ export interface PreviewReadinessInput {
   walletConnected: boolean;
   providersReady: boolean;
   providersError?: string | null;
+  /** Sponsored-relayer path: the citizen needs no wallet at all. */
+  relayerMode?: boolean;
 }
 
 /**
@@ -23,8 +25,8 @@ export function getPreviewReadiness(input: PreviewReadinessInput): PreviewReadin
   if (input.appMode === "demo") {
     return {
       state: "demo",
-      label: "Prototipo local",
-      message: "Esta vista permite explorar el flujo sin enviar transacciones a la red.",
+      label: "Solo lectura local",
+      message: "El modo local permite revisar la interfaz, pero no confirma votos ni crea comprobantes. Configurá Preview para enviar una transacción real.",
     };
   }
 
@@ -36,7 +38,10 @@ export function getPreviewReadiness(input: PreviewReadinessInput): PreviewReadin
     };
   }
 
-  if (!input.walletConnected) {
+  // In relayer mode the fee is sponsored, so a missing wallet is not a
+  // blocker — the relayer being unreachable is, and that surfaces as
+  // providersError below.
+  if (!input.relayerMode && !input.walletConnected) {
     return {
       state: "blocked",
       label: "Preview requiere wallet",

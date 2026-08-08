@@ -22,9 +22,37 @@ describe("Preview readiness", () => {
     expect(getPreviewReadiness({ ...base, providersError: "indexer unavailable" }).message).toContain("indexer unavailable");
   });
 
+  it("does not demand a wallet when the relayer sponsors the fee", () => {
+    // The whole point of the relayer path: a citizen with no wallet can vote.
+    const readiness = getPreviewReadiness({ ...base, walletConnected: false, relayerMode: true });
+    expect(readiness.state).toBe("ready");
+  });
+
+  it("still blocks relayer mode when the relayer itself is unreachable", () => {
+    const readiness = getPreviewReadiness({
+      ...base,
+      walletConnected: false,
+      relayerMode: true,
+      providersError: "No se pudo contactar el relayer: fetch failed",
+    });
+    expect(readiness.state).toBe("blocked");
+    expect(readiness.message).toContain("relayer");
+  });
+
+  it("still requires a contract in relayer mode", () => {
+    const readiness = getPreviewReadiness({
+      ...base,
+      contractAddress: null,
+      walletConnected: false,
+      relayerMode: true,
+    });
+    expect(readiness.state).toBe("blocked");
+  });
+
   it("does not block demo mode on Preview prerequisites", () => {
     const readiness = getPreviewReadiness({ ...base, appMode: "demo", contractAddress: null, walletConnected: false });
     expect(readiness.state).toBe("demo");
-    expect(readiness.label).toBe("Prototipo local");
+    expect(readiness.label).toBe("Solo lectura local");
+    expect(readiness.message).toContain("no confirma votos");
   });
 });

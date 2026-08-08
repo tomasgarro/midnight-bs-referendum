@@ -2,6 +2,23 @@
 
 import type { InitialAPI } from "@midnight-ntwrk/dapp-connector-api";
 
+interface ImportMetaEnv {
+  readonly VITE_APP_MODE?: string;
+  readonly VITE_MIDNIGHT_NETWORK?: string;
+  readonly VITE_MIDNIGHT_CONTRACT_ADDRESS?: string;
+  readonly VITE_MIDNIGHT_PROOF_SERVER_URL?: string;
+  readonly VITE_MIDNIGHT_EXPLORER_BASE_URL?: string;
+  readonly VITE_MIDNIGHT_INDEXER_URL?: string;
+  readonly VITE_MIDNIGHT_INDEXER_WS_URL?: string;
+  readonly VITE_PASSPORT_ORIGIN?: string;
+  /** Set to run the wallet-less sponsored-relayer path. */
+  readonly VITE_RELAYER_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare global {
   interface Window {
     // `@midnight-ntwrk/dapp-connector-api` already augments this on import; the
