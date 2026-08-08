@@ -16,8 +16,10 @@
     "dev": "npm run dev --workspace midnight-referendum-ui --",
     "validate:contract": "npm run compile && npm run test:sim",
     "sync:contract": "node scripts/sync-contract-assets.mjs",
+    "setup:linux": "bash scripts/setup-linux.sh",
+    "verify:linux": "bash scripts/verify-linux.sh",
     "build": "npm run sync:contract && npm run build --workspace midnight-referendum-api && npm run build --workspace midnight-referendum-ui",
-    "test": "npm run test:sim && npm run test --workspace midnight-referendum-ui"
+    "test": "npm run test:sim && npm run test --workspace midnight-referendum-api && npm run test --workspace midnight-referendum-ui"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",

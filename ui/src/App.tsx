@@ -27,6 +27,7 @@ import type {
 } from "midnight-referendum-api";
 import { PassportIdentityBridge, PassportBridgeError } from "@/integration/passport";
 import { deriveProfileId } from "@/integration/profile";
+import { getPreviewReadiness } from "@/integration/preview";
 import { useWallet } from "@/hooks/use-wallet";
 import { MidnightProvidersProvider, useMidnightProviders } from "@/providers/midnight-providers";
 import { WalletProvider } from "@/providers/wallet-context";
@@ -47,7 +48,8 @@ interface VoteReceipt {
   id: string;
   pollId?: string;
   profileId?: string;
-  choice: Choice;
+  /** Legacy demo receipts may contain a choice; new receipts intentionally do not. */
+  choice?: Choice;
   createdAt: string;
   status: "demo-confirmed" | "preview-confirmed";
   explorerUrl?: string;
@@ -82,7 +84,25 @@ const DEFAULT_POLL = POLLS[0]!;
 
 function loadReceipts(): VoteReceipt[] {
   try {
-    return JSON.parse(localStorage.getItem("referendum_civico_receipts") ?? "[]") as VoteReceipt[];
+    const stored = JSON.parse(localStorage.getItem("referendum_civico_receipts") ?? "[]") as unknown;
+    if (!Array.isArray(stored)) return [];
+    return stored.flatMap((value): VoteReceipt[] => {
+      if (!value || typeof value !== "object") return [];
+      const item = value as Record<string, unknown>;
+      if (
+        typeof item.id !== "string" ||
+        typeof item.createdAt !== "string" ||
+        !["demo-confirmed", "preview-confirmed"].includes(String(item.status))
+      ) return [];
+      return [{
+        id: item.id,
+        pollId: typeof item.pollId === "string" ? item.pollId : undefined,
+        profileId: typeof item.profileId === "string" ? item.profileId : undefined,
+        createdAt: item.createdAt,
+        status: item.status as VoteReceipt["status"],
+        explorerUrl: typeof item.explorerUrl === "string" ? item.explorerUrl : undefined,
+      }];
+    });
   } catch {
     return [];
   }
@@ -152,7 +172,7 @@ function VerifyView({ receipts }: { receipts: VoteReceipt[] }) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<"found" | "missing" | null>(null);
   const matched = receipts.find((receipt) => receipt.id === query.trim());
-  return <main className="page-content"><section className="verify-hero"><div className="verify-icon"><ShieldCheck size={32} /></div><p className="eyebrow">Transparencia pública</p><h1>Verificá un comprobante</h1><p>Buscá el identificador para consultar si fue confirmado.</p></section><form className="verify-form" onSubmit={(event) => { event.preventDefault(); setResult(matched ? "found" : "missing"); }}><label htmlFor="receipt-id">Identificador del comprobante</label><div className="search-control"><MagnifyingGlass size={20} /><input id="receipt-id" value={query} onChange={(event) => { setQuery(event.target.value); setResult(null); }} placeholder="demo-..." /><button type="submit" disabled={!query.trim()}>Buscar</button></div></form>{result === "found" && matched ? <section className="verify-result success" aria-live="polite"><CheckCircle size={28} /><div><strong>Comprobante confirmado</strong><p>Elección {matched.choice} registrada en {matched.status === "preview-confirmed" ? "Preview" : "modo demo"}.</p><code>{matched.id}</code>{matched.explorerUrl ? <a href={matched.explorerUrl} target="_blank" rel="noreferrer">Abrir en explorer</a> : null}</div></section> : null}{result === "missing" ? <section className="verify-result missing" aria-live="polite"><Info size={24} /><div><strong>No encontramos ese comprobante</strong><p>Revisá el identificador o esperá la confirmación.</p></div></section> : null}<section className="verify-explanation"><h2>¿Qué podés comprobar?</h2><ul><li><Check size={18} /> Que el comprobante existe.</li><li><Check size={18} /> Que tiene estado confirmado.</li><li><Check size={18} /> Que no necesitás compartir tus datos personales otra vez.</li></ul></section></main>;
+  return <main className="page-content"><section className="verify-hero"><div className="verify-icon"><ShieldCheck size={32} /></div><p className="eyebrow">Transparencia pública</p><h1>Verificá un comprobante</h1><p>Buscá el identificador para consultar si fue confirmado.</p></section><form className="verify-form" onSubmit={(event) => { event.preventDefault(); setResult(matched ? "found" : "missing"); }}><label htmlFor="receipt-id">Identificador del comprobante</label><div className="search-control"><MagnifyingGlass size={20} /><input id="receipt-id" value={query} onChange={(event) => { setQuery(event.target.value); setResult(null); }} placeholder="demo-..." /><button type="submit" disabled={!query.trim()}>Buscar</button></div></form>{result === "found" && matched ? <section className="verify-result success" aria-live="polite"><CheckCircle size={28} /><div><strong>Comprobante confirmado</strong><p>La opción permanece privada durante la etapa de commit. El registro está disponible en {matched.status === "preview-confirmed" ? "Preview" : "modo demo"}.</p><code>{matched.id}</code>{matched.explorerUrl ? <a href={matched.explorerUrl} target="_blank" rel="noreferrer">Abrir en explorer</a> : null}</div></section> : null}{result === "missing" ? <section className="verify-result missing" aria-live="polite"><Info size={24} /><div><strong>No encontramos ese comprobante</strong><p>Revisá el identificador o esperá la confirmación.</p></div></section> : null}<section className="verify-explanation"><h2>¿Qué podés comprobar?</h2><ul><li><Check size={18} /> Que el comprobante existe.</li><li><Check size={18} /> Que tiene estado confirmado.</li><li><Check size={18} /> Que no necesitás compartir tus datos personales otra vez.</li></ul></section></main>;
 }
 
 function ProfileView({
@@ -177,18 +197,18 @@ function FlowStepper({ active }: { active: number }) {
 
 function VoteFlow({
   stage, choice, onChoice, onStage, onClose, onConfirm, onViewReceipt, walletStatus,
-  passportSession, onConnectPassport, previewError, receipt,
+  passportSession, onConnectPassport, previewError, receipt, dustBalance = null,
 }: {
   stage: FlowStage; choice: Choice | null; onChoice: (choice: Choice) => void; onStage: (stage: FlowStage) => void;
   onClose: () => void; onConfirm: () => void; onViewReceipt: () => void; walletStatus: string;
-  passportSession: PassportSession | null; onConnectPassport: () => void; previewError: string | null; receipt: VoteReceipt | null;
+  passportSession: PassportSession | null; onConnectPassport: () => void; previewError: string | null; receipt: VoteReceipt | null; dustBalance?: bigint | null;
 }) {
   const activeStep = stage === "verify" || stage === "eligible" ? 2 : 3;
   return <main className="page-content flow-page"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /> Volver a la propuesta</button><FlowStepper active={activeStep} />
     {stage === "verify" ? <section className="flow-card"><div className="flow-card-icon"><Fingerprint size={32} /></div><p className="eyebrow">Identidad y elegibilidad</p><h1>Antes de votar</h1><h2>Conectá Midnight Passport</h2><p>Passport aporta onboarding passkey y un perfil consentido. No comparte tu secreto de voto ni reemplaza la aprobación del wallet.</p>{passportSession ? <div className="data-summary"><span><CheckCircle size={18} /> Passport conectado{passportSession.displayName ? ` · ${passportSession.displayName}` : ""}</span><span><ShieldCheck size={18} /> Secreto anónimo separado</span></div> : <button className="secondary-button" onClick={onConnectPassport}><Fingerprint size={18} /> Conectar Passport</button>}<div className="trust-line"><ShieldCheck size={20} /><span>Una persona, un voto.</span></div><button className="primary-button yellow" disabled={APP_MODE === "preview" && !passportSession} onClick={() => onStage("eligible")}>Validar elegibilidad <ArrowRight size={20} /></button>{APP_MODE === "demo" && !passportSession ? <button className="secondary-link" onClick={() => onStage("eligible")}>Continuar con fixture demo <ArrowRight size={16} /></button> : null}</section> : null}
     {stage === "eligible" ? <section className="flow-card success-card"><div className="success-symbol"><Check size={34} /></div><p className="eyebrow">Fixture de hackathon</p><h1>Listo, podés votar</h1><p>La elegibilidad se convierte en un compromiso de membresía. No se almacenan documentos ni datos de KYC.</p><div className="data-summary"><span><CheckCircle size={18} /> Elegibilidad validada</span><span><ShieldCheck size={18} /> Datos personales no guardados</span></div><button className="primary-button blue" onClick={() => onStage("choose")}>Continuar al voto <ArrowRight size={20} /></button></section> : null}
     {stage === "choose" ? <section className="flow-card"><p className="eyebrow">Paso 3 de 3</p><h1>Elegí tu respuesta</h1><p>¿Querés priorizar energías renovables en tu comunidad?</p><div className="choice-list"><button className={`choice-button yes ${choice === "YES" ? "selected" : ""}`} onClick={() => onChoice("YES")}><span>Sí</span><small>Estoy de acuerdo</small><span className="choice-check">{choice === "YES" ? <Check size={18} /> : null}</span></button><button className={`choice-button no ${choice === "NO" ? "selected" : ""}`} onClick={() => onChoice("NO")}><span>No</span><small>No estoy de acuerdo</small><span className="choice-check">{choice === "NO" ? <Check size={18} /> : null}</span></button><button className={`choice-button ${choice === "ABSTAIN" ? "selected" : ""}`} onClick={() => onChoice("ABSTAIN")}><span>Abstención</span><small>Prefiero no elegir</small><span className="choice-check">{choice === "ABSTAIN" ? <Check size={18} /> : null}</span></button></div><button className="primary-button blue" disabled={!choice} onClick={() => onStage("review")}>Revisar mi voto <ArrowRight size={20} /></button></section> : null}
-    {stage === "review" ? <section className="flow-card"><p className="eyebrow">Revisá antes de confirmar</p><h1>Tu compromiso</h1><div className={`review-choice ${choice === "NO" ? "no" : "yes"}`}><span>{choice}</span><small>La opción se mantiene privada hasta reveal.</small></div><div className="review-notice"><Info size={20} /><p>Identidad Passport: {passportSession ? "conectada" : "no conectada"}. Aprobación del wallet: {walletStatus === "connected" ? "lista" : "pendiente"}.</p></div>{previewError ? <div className="verify-result missing"><Info size={20} /><div><strong>Preview todavía no puede enviar</strong><p>{previewError}</p></div></div> : null}<button className="primary-button yellow" onClick={onConfirm}>Confirmar compromiso {APP_MODE === "preview" ? "en Preview" : "en demo"} <ArrowRight size={20} /></button></section> : null}
+     {stage === "review" ? <section className="flow-card"><p className="eyebrow">Revisá antes de confirmar</p><h1>Tu compromiso</h1><div className={`review-choice ${choice === "NO" ? "no" : "yes"}`}><span>{choice}</span><small>La opción se mantiene privada hasta reveal.</small></div><div className="review-notice"><Info size={20} /><p>Identidad Passport: {passportSession ? "conectada" : "no conectada"}. Aprobación del wallet: {walletStatus === "connected" ? "lista" : "pendiente"}. DUST: {dustBalance === null ? "saldo no disponible" : `${dustBalance.toString()} disponible`}.</p></div>{previewError ? <div className="verify-result missing"><Info size={20} /><div><strong>Preview todavía no puede enviar</strong><p>{previewError}</p></div></div> : null}<button className="primary-button yellow" onClick={onConfirm}>Confirmar compromiso {APP_MODE === "preview" ? "en Preview" : "en demo"} <ArrowRight size={20} /></button></section> : null}
     {stage === "processing" ? <section className="flow-card processing-card"><div className="processing-spinner"><ChartBar size={34} /></div><p className="eyebrow">Procesando</p><h1>Preparando tu comprobante</h1><p>El flujo reúne prueba, balanceo DUST/NIGHT, aprobación del wallet y confirmación canónica.</p><div className="processing-track"><span /></div></section> : null}
     {stage === "receipt" ? <section className="flow-card success-card"><div className="success-symbol"><Check size={34} /></div><p className="eyebrow">Compromiso registrado</p><h1>Gracias por participar</h1><p>Guardá este identificador para verificar el resultado.</p><div className="receipt-box"><span>Comprobante</span><strong>{receipt?.id ?? "Disponible en Verificá"}</strong><small>{receipt?.status === "preview-confirmed" ? "Confirmado en Preview." : "Confirmado en modo demo."}</small></div>{receipt?.explorerUrl ? <a className="text-link" href={receipt.explorerUrl} target="_blank" rel="noreferrer">Abrir transacción en explorer <ArrowRight size={16} /></a> : null}<button className="primary-button blue" onClick={onViewReceipt}>Ver mi comprobante <ArrowRight size={20} /></button></section> : null}
   </main>;
@@ -205,9 +225,16 @@ function CivicApp() {
   const [passportError, setPassportError] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [eligibility, setEligibility] = useState<{ attestation: EligibilityAttestation; voterSecret: Uint8Array } | null>(null);
-  const { status: walletStatus } = useWallet();
-  const { providers } = useMidnightProviders();
+  const { status: walletStatus, dustBalance } = useWallet();
+  const { providers, isReady, error: providersError } = useMidnightProviders();
   const profileId = useMemo(() => deriveProfileId(passportSession), [passportSession]);
+  const previewReadiness = getPreviewReadiness({
+    appMode: APP_MODE,
+    contractAddress: CONTRACT_ADDRESS,
+    walletConnected: walletStatus === "connected",
+    providersReady: isReady,
+    providersError,
+  });
   const connectPassport = async () => {
     setPassportError(null);
     try {
@@ -222,8 +249,11 @@ function CivicApp() {
     setActivePollId(pollId); setChoice(null); setReceipt(null); setPreviewError(null); setFlowStage("verify");
     if (APP_MODE === "preview") {
       try {
-        const { createFixtureEligibilityProvider } = await import("midnight-referendum-api");
-        setEligibility(await createFixtureEligibilityProvider().attest(passportSession, pollId));
+        const { createFixtureEligibilityProvider, PRIVATE_STATE_ID } = await import("midnight-referendum-api");
+        const previousState = providers
+          ? await providers.privateStateProvider.get(PRIVATE_STATE_ID)
+          : null;
+        setEligibility(await createFixtureEligibilityProvider(previousState?.voterSecret).attest(passportSession, pollId));
       } catch (error) {
         setPreviewError(error instanceof Error ? error.message : "No se pudo validar la elegibilidad");
       }
@@ -232,8 +262,8 @@ function CivicApp() {
 
   const confirmVote = async () => {
     if (APP_MODE === "preview") {
-      if (!walletStatus || walletStatus !== "connected") { setPreviewError("Conectá un wallet DApp Connector para aprobar y balancear la transacción."); return; }
-      if (!providers || !CONTRACT_ADDRESS) { setPreviewError("Configurá VITE_MIDNIGHT_CONTRACT_ADDRESS y los assets ZK servidos en /managed/referendum."); return; }
+      if (previewReadiness.state !== "ready") { setPreviewError(previewReadiness.message); return; }
+      if (!providers || !CONTRACT_ADDRESS) { setPreviewError("Preview no está listo para enviar."); return; }
       if (!eligibility || !choice) { setPreviewError("Completá la validación de elegibilidad antes de firmar."); return; }
       setPreviewError(null); setFlowStage("processing");
       try {
@@ -244,7 +274,7 @@ function CivicApp() {
         const executor = createReferendumExecutor(providers, { issuerSecret: new Uint8Array(32), organizerSecret: new Uint8Array(32), eventId: new Uint8Array(32), explorerBaseUrl: EXPLORER_BASE_URL });
         await executor.join(CONTRACT_ADDRESS, privateState);
         const confirmed = await executor.castVote();
-        const nextReceipt: VoteReceipt = { id: confirmed.txId, pollId: activePollId, profileId, choice, createdAt: new Date().toISOString(), status: "preview-confirmed", explorerUrl: confirmed.explorerUrl };
+        const nextReceipt: VoteReceipt = { id: confirmed.txId, pollId: activePollId, profileId, createdAt: new Date().toISOString(), status: "preview-confirmed", explorerUrl: confirmed.explorerUrl };
         const nextReceipts = [nextReceipt, ...receipts]; setReceipts(nextReceipts); localStorage.setItem("referendum_civico_receipts", JSON.stringify(nextReceipts)); setReceipt(nextReceipt); setFlowStage("receipt");
       } catch (error) { setPreviewError(error instanceof Error ? error.message : "Preview transaction failed"); setFlowStage("review"); }
       return;
@@ -255,7 +285,7 @@ function CivicApp() {
 
   const currentTabContent = useMemo(() => tab === "understand" ? <UnderstandView /> : tab === "verify" ? <VerifyView receipts={receipts} /> : tab === "profile" ? <ProfileView passportSession={passportSession} profileId={profileId} receipts={receipts} walletStatus={walletStatus} onConnectPassport={() => void connectPassport()} /> : <VotesView onStartVote={startVote} />, [passportSession, profileId, receipts, tab, walletStatus]);
   const navigate = (nextTab: Tab) => { setTab(nextTab); setFlowStage(null); };
-  return <div className="app-shell"><Header passportSession={passportSession} passportError={passportError} onConnectPassport={() => void connectPassport()} onDismissPassportError={() => setPassportError(null)} /><div className="mode-strip"><div className="mode-copy"><span><span className="status-dot" />{APP_MODE === "preview" ? (CONTRACT_ADDRESS ? "Preview configurado" : "Preview requiere configuración") : "Prototipo local"}</span><span className="mode-help">{passportSession ? "Passport conectado · wallet separado" : APP_MODE === "preview" ? "Wallet DApp Connector para votar" : "Explorá sin wallet"}</span></div><details className="mode-details"><summary aria-label="Qué significa este estado"><Info size={14} /><span>Info</span></summary><p>{APP_MODE === "preview" ? "Preview prepara transacciones reales cuando el contrato, los assets y la wallet están configurados." : "Esta vista permite explorar el flujo sin enviar transacciones a la red."}</p></details></div>{flowStage ? <VoteFlow stage={flowStage} choice={choice} onChoice={setChoice} onStage={setFlowStage} onClose={() => setFlowStage(null)} onConfirm={() => void confirmVote()} onViewReceipt={() => { setFlowStage(null); setTab("verify"); }} walletStatus={walletStatus} passportSession={passportSession} onConnectPassport={() => void connectPassport()} previewError={previewError} receipt={receipt} /> : currentTabContent}<BottomNav tab={tab} onChange={navigate} />{receipt ? <button className="receipt-toast" onClick={() => { setFlowStage(null); setTab("verify"); }}><CheckCircle size={18} /> Último comprobante listo <ArrowRight size={16} /></button> : null}</div>;
+  return <div className="app-shell"><Header passportSession={passportSession} passportError={passportError} onConnectPassport={() => void connectPassport()} onDismissPassportError={() => setPassportError(null)} /><div className="mode-strip"><div className="mode-copy"><span><span className="status-dot" />{previewReadiness.label}</span><span className="mode-help">{passportSession ? "Passport conectado · wallet separado" : APP_MODE === "preview" ? "Wallet DApp Connector para votar" : "Explorá sin wallet"}</span></div><details className="mode-details"><summary aria-label="Qué significa este estado"><Info size={14} /><span>Info</span></summary><p>{previewReadiness.message}</p></details></div>{flowStage ? <VoteFlow stage={flowStage} choice={choice} onChoice={setChoice} onStage={setFlowStage} onClose={() => setFlowStage(null)} onConfirm={() => void confirmVote()} onViewReceipt={() => { setFlowStage(null); setTab("verify"); }} walletStatus={walletStatus} passportSession={passportSession} onConnectPassport={() => void connectPassport()} previewError={previewError} receipt={receipt} dustBalance={dustBalance} /> : currentTabContent}<BottomNav tab={tab} onChange={navigate} />{receipt ? <button className="receipt-toast" onClick={() => { setFlowStage(null); setTab("verify"); }}><CheckCircle size={18} /> Último comprobante listo <ArrowRight size={16} /></button> : null}</div>;
 }
 
 export function App() {

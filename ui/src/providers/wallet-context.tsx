@@ -8,6 +8,7 @@ import {
 import type { ConnectedAPI, InitialAPI } from "@midnight-ntwrk/dapp-connector-api";
 
 const STORAGE_KEY = "midnight-referendum_wallet_autoconnect";
+const TARGET_NETWORK_ID = import.meta.env.VITE_MIDNIGHT_NETWORK?.trim() || "preview";
 
 export type WalletConnectionStatus =
   | "disconnected"
@@ -22,12 +23,15 @@ export interface WalletState {
   coinPublicKey: string | null;
   encryptionPublicKey: string | null;
   networkId: string | null;
+  dustBalance: bigint | null;
+  dustCap: bigint | null;
   error: string | null;
 }
 
 export interface WalletContextValue extends WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
+  refreshBalances: () => Promise<void>;
 }
 
 export const WalletContext = createContext<WalletContextValue | null>(null);
@@ -50,8 +54,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     coinPublicKey: null,
     encryptionPublicKey: null,
     networkId: null,
+    dustBalance: null,
+    dustCap: null,
     error: null,
   });
+
+  const refreshBalances = useCallback(async () => {
+    if (!state.connectedApi || typeof state.connectedApi.getDustBalance !== "function") return;
+    try {
+      const dust = await state.connectedApi.getDustBalance();
+      setState((prev) => ({ ...prev, dustBalance: dust.balance, dustCap: dust.cap }));
+    } catch {
+      // A wallet may expose the connector without exposing balance APIs yet.
+      // Connection should remain usable; the transaction flow will surface any
+      // balancing error from the wallet itself.
+    }
+  }, [state.connectedApi]);
 
   const connect = useCallback(async () => {
     setState((prev) => ({ ...prev, status: "connecting", error: null }));
@@ -68,9 +86,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const api = await wallet.connect("preview");
+      const api = await wallet.connect(TARGET_NETWORK_ID);
       const config = await api.getConfiguration();
       const addresses = await api.getShieldedAddresses();
+      let dustBalance: bigint | null = null;
+      let dustCap: bigint | null = null;
+      try {
+        const dust = await api.getDustBalance();
+        dustBalance = dust.balance;
+        dustCap = dust.cap;
+      } catch {
+        // Keep the wallet connected when balance discovery is unavailable.
+      }
 
       setState({
         status: "connected",
@@ -79,6 +106,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         coinPublicKey: addresses.shieldedCoinPublicKey,
         encryptionPublicKey: addresses.shieldedEncryptionPublicKey,
         networkId: config.networkId,
+        dustBalance,
+        dustCap,
         error: null,
       });
 
@@ -105,6 +134,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       coinPublicKey: null,
       encryptionPublicKey: null,
       networkId: null,
+      dustBalance: null,
+      dustCap: null,
       error: null,
     });
   }, []);
@@ -116,7 +147,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [connect]);
 
   return (
-    <WalletContext.Provider value={{ ...state, connect, disconnect }}>
+    <WalletContext.Provider value={{ ...state, connect, disconnect, refreshBalances }}>
       {children}
     </WalletContext.Provider>
   );

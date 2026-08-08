@@ -17,7 +17,7 @@ import {
 import type { ChargedState } from "@midnight-ntwrk/compact-runtime";
 import type { ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
 import { catchError, combineLatest, map, retry, throwError, Observable } from "rxjs";
-import { inMemoryPrivateStateProvider } from "./private-state.js";
+import { browserPrivateStateProvider, inMemoryPrivateStateProvider } from "./private-state.js";
 import * as GeneratedReferendum from "./generated/referendum/index.js";
 import type {
   AppProviders,
@@ -31,7 +31,12 @@ import type {
 } from "./types.js";
 import { PRIVATE_STATE_ID } from "./types.js";
 
-export { inMemoryPrivateStateProvider } from "./private-state.js";
+export {
+  browserPrivateStateProvider,
+  deserializePrivateStateFromStorage,
+  inMemoryPrivateStateProvider,
+  serializePrivateStateForStorage,
+} from "./private-state.js";
 export {
   createExternalEligibilityProvider,
   createFixtureEligibilityProvider,
@@ -91,10 +96,10 @@ export async function createProviders(
   const publicDataProvider = previewSafeIndexerProvider(
     indexerPublicDataProvider(config.indexerUri, config.indexerWsUri),
   );
-  const privateStateProvider = inMemoryPrivateStateProvider<
-    typeof PRIVATE_STATE_ID,
-    PrivateState
-  >();
+  const privateStateProvider =
+    typeof window === "undefined"
+      ? inMemoryPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>()
+      : browserPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>();
   const browserOrigin = typeof window === "undefined" ? "" : window.location.origin;
   const zkConfigProvider = new FetchZkConfigProvider<ImpureCircuitKeys>(
     options.zkConfigBaseUrl ?? `${browserOrigin}/managed/referendum`,

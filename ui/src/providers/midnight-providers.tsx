@@ -36,7 +36,11 @@ export function MidnightProvidersProvider({
     let cancelled = false;
 
     import("midnight-referendum-api")
-      .then(({ createProviders }) => createProviders(connectedApi))
+      .then(({ createProviders }) =>
+        createProviders(connectedApi, {
+          proofServerUri: import.meta.env.VITE_MIDNIGHT_PROOF_SERVER_URL?.trim() || undefined,
+        }),
+      )
       .then((p) => {
         if (!cancelled) {
           setProviders(p);

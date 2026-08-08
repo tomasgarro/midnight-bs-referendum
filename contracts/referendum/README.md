@@ -30,12 +30,18 @@ phase tally.
 
 ## Compile
 
-From the repository root:
+Run the compiler inside Linux/WSL from the repository root:
 
-```powershell
-$env:COMPACTC_BIN = "C:\\path\\to\\compactc.exe"
-npm.cmd run compile
+```bash
+compactc --version
+npm run compile
+```
+
+If `compactc` is not on `PATH`, set its Linux path explicitly:
+
+```bash
+COMPACTC_BIN=/path/to/compactc npm run compile
 ```
 
 Generated artifacts are ignored by Git and synchronized into the API and UI by
-`npm.cmd run build`. The simulator test source is in `referendum.test.ts`.
+`npm run build`. The simulator test source is in `referendum.test.ts`.

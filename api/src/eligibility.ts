@@ -38,8 +38,10 @@ export interface EligibilityProvider {
  * Deterministic in the protocol sense, but fresh per browser session: this
  * fixture never reads identity documents and never stores raw identity data.
  */
-export function createFixtureEligibilityProvider(): EligibilityProvider {
-  let voterSecret: Uint8Array | undefined;
+export function createFixtureEligibilityProvider(
+  restoredVoterSecret?: Uint8Array,
+): EligibilityProvider {
+  let voterSecret: Uint8Array | undefined = restoredVoterSecret;
   return {
     async attest(_session, eventId) {
       voterSecret ??= crypto.getRandomValues(new Uint8Array(32));

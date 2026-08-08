@@ -231,10 +231,10 @@
     msgpackr "^1.11.4"
     multipasta "^0.2.7"
 
-"@esbuild/win32-x64@0.28.1":
+"@esbuild/linux-x64@0.28.1":
   version "0.28.1"
-  resolved "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.28.1.tgz"
-  integrity sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A==
+  resolved "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.28.1.tgz"
+  integrity sha512-u/anNYF2mmVOEDwLtnQ1wOr3EZ9sTNGLWrsYGYwHWzGA3Si84IOkHXlbWTD1NB+9/1lcnweYKO54uhxZydNzfA==
 
 "@graphql-typed-document-node/core@^3.1.1", "@graphql-typed-document-node/core@^3.2.0":
   version "3.2.0"
@@ -420,10 +420,10 @@
     "@scure/base" "^2.0.0"
     "@subsquid/scale-codec" "^4.0.1"
 
-"@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4":
-  version "3.0.4"
-  resolved "https://registry.npmjs.org/@msgpackr-extract/msgpackr-extract-win32-x64/-/msgpackr-extract-win32-x64-3.0.4.tgz"
-  integrity sha512-CmCXPQrkbwExx3j946/PtHWHbYJiCRBRDl4BlkRQcJB/YOwQxJRTpoo7aTsortjgoJ1x7opzTSxn7C+ASSLVjQ==
+"@napi-rs/lzma-linux-x64-gnu@1.5.1":
+  version "1.5.1"
+  resolved "https://registry.npmjs.org/@napi-rs/lzma-linux-x64-gnu/-/lzma-linux-x64-gnu-1.5.1.tgz"
+  integrity sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==
 
 "@originjs/vite-plugin-commonjs@^1.0.3":
   version "1.0.3"
@@ -459,10 +459,15 @@
   dependencies:
     "@radix-ui/react-compose-refs" "1.1.5"
 
-"@rolldown/binding-win32-x64-msvc@1.2.3":
+"@rolldown/binding-linux-x64-gnu@1.2.3":
   version "1.2.3"
-  resolved "https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.2.3.tgz"
-  integrity sha512-ekcqMMkI2PlhYnfzQnB/cEdYUVVJViWvoUyLrbzgDoi3Snfc1mVBwdnc306ufA5ejy8JSPjT2RlW1nQSjW7efg==
+  resolved "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.3.tgz"
+  integrity sha512-TytMwF2KVGqP2tgd0I1OY0PAv78dZRAYcF5ssDzjM34SUXCED3uXvSd5+lHoC0bTD6eEdFz7LdQNCO1y0oVk9w==
+
+"@rolldown/binding-linux-x64-musl@1.2.3":
+  version "1.2.3"
+  resolved "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.2.3.tgz"
+  integrity sha512-/E9m3qstrJFVPoULV25mVQblSNExY2+kBsYe4sy0Tn0yOOgJ8wZbZt3KnRbF/XeU2Gl1STKUQnDNTqhIE5MD4A==
 
 "@rolldown/pluginutils@^1.0.0":
   version "1.0.1"
@@ -497,15 +502,15 @@
     estree-walker "^2.0.2"
     picomatch "^4.0.2"
 
-"@rollup/rollup-win32-x64-gnu@4.62.4":
+"@rollup/rollup-linux-x64-gnu@4.62.4":
   version "4.62.4"
-  resolved "https://registry.npmjs.org/@rollup/rollup-win32-x64-gnu/-/rollup-win32-x64-gnu-4.62.4.tgz"
-  integrity sha512-qPzHqdj9rfUD+w79dtE07zi/kFwKyCJqplp5K5ygeLTp7jLpAoc16OAH39HSmRC9UpozaecsleI8uAdEj6v2yw==
+  resolved "https://registry.npmjs.org/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.62.4.tgz"
+  integrity sha512-W69hukhZ3KKNRCaMIEzKvcFye42hh0FE1+YoYaf5+Ikacuftoco6yO/xouz0hc5d5W/s3yBro5jRiuEE/Q5vUw==
 
-"@rollup/rollup-win32-x64-msvc@4.62.4":
+"@rollup/rollup-linux-x64-musl@4.62.4":
   version "4.62.4"
-  resolved "https://registry.npmjs.org/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.62.4.tgz"
-  integrity sha512-zD6NdeWEByGE9QF9vCrlJ5YQB4oq9q91kPZS37Jwj5hOkvR1lTBSpsKhKDw4IJtbQ35LsTS1HD9DZYGKIshU1Q==
+  resolved "https://registry.npmjs.org/@rollup/rollup-linux-x64-musl/-/rollup-linux-x64-musl-4.62.4.tgz"
+  integrity sha512-qiXbGG2jkjXhzXpsFZSR2Xpb8DN/UaxYsbb/STbuR/6fpaDgRmmaq1B/LmtF2wQFOFOSsK2jdE0RZ3a0zHn4QA==
 
 "@scure/base@^2.0.0":
   version "2.2.0"
@@ -536,11 +541,6 @@
   integrity sha512-YrEzKjTRPRI4FtJVQqn3mPlIYSWbKGazpOpccRYITmxH0jzKtUfwpIkeCRurVsB/293+oFO8YqyQ6LO14FbLwQ==
   dependencies:
     "@subsquid/util-internal-hex" "^1.2.3"
-
-"@swc/core-win32-x64-msvc@1.15.47":
-  version "1.15.47"
-  resolved "https://registry.npmjs.org/@swc/core-win32-x64-msvc/-/core-win32-x64-msvc-1.15.47.tgz"
-  integrity sha512-2h8Iek95vnixkBRCo+H8p09+Q5ll2NgSMFrWTy0iKt7+/t+8/T5mBpiT6c0ZxSS7wcWjwZ9sGZkK70tTSYHdDw==
 
 "@swc/core@^1.12.14":
   version "1.15.47"
@@ -592,11 +592,6 @@
     magic-string "^0.30.21"
     source-map-js "^1.2.1"
     tailwindcss "4.3.3"
-
-"@tailwindcss/oxide-win32-x64-msvc@4.3.3":
-  version "4.3.3"
-  resolved "https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.3.3.tgz"
-  integrity sha512-yJ0pwIVc/nYeGoV02WtsN8KYyLQv7kyI2wDnkezyJlGGjkd4QLwDGAwl47YpPJeuI0M0ObaXGSPjvWDPeTPggw==
 
 "@tailwindcss/oxide@4.3.3":
   version "4.3.3"
@@ -1337,7 +1332,7 @@ des.js@^1.0.0:
     inherits "^2.0.1"
     minimalistic-assert "^1.0.0"
 
-detect-libc@^2.0.1, detect-libc@^2.0.3:
+detect-libc@^2.0.3:
   version "2.1.2"
   resolved "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz"
   integrity sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==
@@ -1441,10 +1436,10 @@ es-object-atoms@^1.0.0, es-object-atoms@^1.1.1:
   dependencies:
     es-errors "^1.3.0"
 
-esbuild-windows-64@0.14.54:
+esbuild-linux-64@0.14.54:
   version "0.14.54"
-  resolved "https://registry.npmjs.org/esbuild-windows-64/-/esbuild-windows-64-0.14.54.tgz"
-  integrity sha512-AoHTRBUuYwXtZhjXZbA1pGfTo8cJo3vZIcWGLiUcTNgHpJJMC1rVA44ZereBHMJtotyN71S8Qw0npiCIkW96cQ==
+  resolved "https://registry.npmjs.org/esbuild-linux-64/-/esbuild-linux-64-0.14.54.tgz"
+  integrity sha512-EgjAgH5HwTbtNsTqQOXWApBaPVdDn7XcK+/PtJwZLT1UmpLoznPd8c5CxqsH2dQK3j05YsB3L17T8vE7cp4cCg==
 
 esbuild@^0.14.14:
   version "0.14.54"
@@ -1886,15 +1881,25 @@ json5@^2.2.3:
   resolved "https://registry.npmjs.org/json5/-/json5-2.2.3.tgz"
   integrity sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==
 
-lightningcss-win32-x64-msvc@1.32.0:
+lightningcss-linux-x64-gnu@1.32.0:
   version "1.32.0"
-  resolved "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.32.0.tgz"
-  integrity sha512-Amq9B/SoZYdDi1kFrojnoqPLxYhQ4Wo5XiL8EVJrVsB8ARoC1PWW6VGtT0WKCemjy8aC+louJnjS7U18x3b06Q==
+  resolved "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.32.0.tgz"
+  integrity sha512-V7Qr52IhZmdKPVr+Vtw8o+WLsQJYCTd8loIfpDaMRWGUZfBOYEJeyJIkqGIDMZPwPx24pUMfwSxxI8phr/MbOA==
 
-lightningcss-win32-x64-msvc@1.33.0:
+lightningcss-linux-x64-gnu@1.33.0:
   version "1.33.0"
-  resolved "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.33.0.tgz"
-  integrity sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA==
+  resolved "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.33.0.tgz"
+  integrity sha512-ar+Ju7LmcN0Jo4FpL4hpFybwNG9/3A/Br5KW2n2jyODg3MEZXaDYADdemoNS+BDNfMgKvylJLj4S5tyRActuAg==
+
+lightningcss-linux-x64-musl@1.32.0:
+  version "1.32.0"
+  resolved "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.32.0.tgz"
+  integrity sha512-bYcLp+Vb0awsiXg/80uCRezCYHNg1/l3mt0gzHnWV9XP1W5sKa5/TCdGWaR/zBM2PeF/HbsQv/j2URNOiVuxWg==
+
+lightningcss-linux-x64-musl@1.33.0:
+  version "1.33.0"
+  resolved "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.33.0.tgz"
+  integrity sha512-RYiYbkokw0trfKqqzfF55lginwEPrD3OJDfTuJzFs1MK6iFnDenaz1fqLLtX4ITG3OktJQXOeTaw1awrBAlZPw==
 
 lightningcss@^1.21.0, lightningcss@^1.33.0:
   version "1.33.0"
@@ -1984,7 +1989,7 @@ md5.js@^1.3.4:
     inherits "^2.0.1"
     safe-buffer "^5.1.2"
 
-midnight-referendum-api@*, "midnight-referendum-api@file:C:\\Users\\tomas\\Desktop\\Midnight\\BS AS Hackathon\\12 Project\\api":
+midnight-referendum-api@*, "midnight-referendum-api@file:/mnt/c/Users/tomas/Desktop/Midnight/BS AS Hackathon/12 Project/api":
   version "0.1.0"
   resolved "file:api"
   dependencies:
@@ -2001,7 +2006,7 @@ midnight-referendum-api@*, "midnight-referendum-api@file:C:\\Users\\tomas\\Deskt
     "@midnight-ntwrk/midnight-js-utils" "^4.1.1"
     rxjs "^7.8.1"
 
-"midnight-referendum-ui@file:C:\\Users\\tomas\\Desktop\\Midnight\\BS AS Hackathon\\12 Project\\ui":
+"midnight-referendum-ui@file:/mnt/c/Users/tomas/Desktop/Midnight/BS AS Hackathon/12 Project/ui":
   version "0.1.0"
   resolved "file:ui"
   dependencies:
@@ -2046,20 +2051,6 @@ ms@^2.1.3:
   resolved "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz"
   integrity sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==
 
-msgpackr-extract@^3.0.2:
-  version "3.0.4"
-  resolved "https://registry.npmjs.org/msgpackr-extract/-/msgpackr-extract-3.0.4.tgz"
-  integrity sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==
-  dependencies:
-    node-gyp-build-optional-packages "5.2.2"
-  optionalDependencies:
-    "@msgpackr-extract/msgpackr-extract-darwin-arm64" "3.0.4"
-    "@msgpackr-extract/msgpackr-extract-darwin-x64" "3.0.4"
-    "@msgpackr-extract/msgpackr-extract-linux-arm" "3.0.4"
-    "@msgpackr-extract/msgpackr-extract-linux-arm64" "3.0.4"
-    "@msgpackr-extract/msgpackr-extract-linux-x64" "3.0.4"
-    "@msgpackr-extract/msgpackr-extract-win32-x64" "3.0.4"
-
 msgpackr@^1.11.4:
   version "1.12.1"
   resolved "https://registry.npmjs.org/msgpackr/-/msgpackr-1.12.1.tgz"
@@ -2083,13 +2074,6 @@ node-fetch@^2.7.0:
   integrity sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==
   dependencies:
     whatwg-url "^5.0.0"
-
-node-gyp-build-optional-packages@5.2.2:
-  version "5.2.2"
-  resolved "https://registry.npmjs.org/node-gyp-build-optional-packages/-/node-gyp-build-optional-packages-5.2.2.tgz"
-  integrity sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==
-  dependencies:
-    detect-libc "^2.0.1"
 
 node-releases@^2.0.51:
   version "2.0.53"
@@ -3010,7 +2994,7 @@ vite-plugin-wasm@^3.4.1:
   resolved "https://registry.npmjs.org/vite-plugin-wasm/-/vite-plugin-wasm-3.6.0.tgz"
   integrity sha512-mL/QPziiIA4RAA6DkaZZzOstdwbW5jO4Vz7Zenj0wieKWBlNvIvX5L5ljum9lcUX0ShNfBgCNLKTjNkRVVqcsw==
 
-"vite@^2 || ^3 || ^4 || ^5 || ^6 || ^7 || ^8", "vite@^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0", "vite@^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0", "vite@^5.0.0 || ^6.0.0 || ^7.0.0-0", "vite@^5.2.0 || ^6 || ^7 || ^8", vite@^7.0.0, vite@>=2.8:
+"vite@^2 || ^3 || ^4 || ^5 || ^6 || ^7 || ^8", "vite@^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0", "vite@^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0", "vite@^5.0.0 || ^6.0.0 || ^7.0.0-0", "vite@^5.2.0 || ^6 || ^7 || ^8", "vite@^6.0.0 || ^7.0.0 || ^8.0.0-0", vite@^7.0.0, vite@>=2.8:
   version "7.3.6"
   resolved "https://registry.npmjs.org/vite/-/vite-7.3.6.tgz"
   integrity sha512-4XP60spRGjSZFf1qYH+dJIkK2znL3zQfl9KkOV9MkkRR/3Dls0dxaBsQPTloEc5BLXWPL9vsOxopxyKoMmDueg==
@@ -3021,19 +3005,6 @@ vite-plugin-wasm@^3.4.1:
     postcss "^8.5.6"
     rollup "^4.43.0"
     tinyglobby "^0.2.15"
-  optionalDependencies:
-    fsevents "~2.3.3"
-
-"vite@^6.0.0 || ^7.0.0 || ^8.0.0-0":
-  version "8.2.1"
-  resolved "https://registry.npmjs.org/vite/-/vite-8.2.1.tgz"
-  integrity sha512-EU/eS7BH3XROHh2YnBefjM6DBKA6ZeMZEYQbj7NLWg5wHYlhB8B/Mayd5XsgWq+NFYccDOTemRpdETWR6Ka/lw==
-  dependencies:
-    lightningcss "^1.33.0"
-    picomatch "^4.0.5"
-    postcss "^8.5.25"
-    rolldown "~1.2.1"
-    tinyglobby "^0.2.17"
   optionalDependencies:
     fsevents "~2.3.3"
 
