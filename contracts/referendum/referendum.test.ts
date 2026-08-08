@@ -1,30 +1,32 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   CompactTypeBytes,
+  CompactTypeEnum,
   CompactTypeVector,
   createCircuitContext,
   createConstructorContext,
   dummyContractAddress,
+  persistentCommit,
   persistentHash,
   type MerkleTreePath,
   type WitnessContext,
-} from '@midnight-ntwrk/compact-runtime';
-import { sampleCoinPublicKey } from '@midnight-ntwrk/ledger-v8';
-import {
-  Choice,
-  Contract,
-  ledger as referendumLedger,
-} from './managed/referendum/contract/index.js';
+} from "@midnight-ntwrk/compact-runtime";
+import { sampleCoinPublicKey } from "@midnight-ntwrk/ledger-v8";
+import { Choice, Contract, ledger as referendumLedger } from "./managed/referendum/contract/index.js";
 
 type PrivateState = {
-  issuer: Uint8Array;
-  organizer: Uint8Array;
-  voter: Uint8Array;
-  path?: MerkleTreePath<Uint8Array>;
+  issuerSecret: Uint8Array;
+  organizerSecret: Uint8Array;
+  voterSecret: Uint8Array;
+  voterChoice: Choice;
+  voteSalt: Uint8Array;
+  voterPath?: MerkleTreePath<Uint8Array>;
+  revealPath?: MerkleTreePath<Uint8Array>;
 };
 
 const bytes32 = new CompactTypeBytes(32);
 const hash2 = new CompactTypeVector(2, bytes32);
+const choiceType = new CompactTypeEnum(2, 1);
 
 function pad32(value: string): Uint8Array {
   const result = new Uint8Array(32);
@@ -32,8 +34,12 @@ function pad32(value: string): Uint8Array {
   return result;
 }
 
-function commitmentFor(secret: Uint8Array): Uint8Array {
-  return persistentHash(hash2, [pad32('referendum:commitment:'), secret]);
+function eligibilityCommitment(secret: Uint8Array): Uint8Array {
+  return persistentHash(hash2, [pad32("referendum:commitment:"), secret]);
+}
+
+function ballotCommitment(choice: Choice, salt: Uint8Array): Uint8Array {
+  return persistentCommit(choiceType, choice, salt);
 }
 
 function newBytes(value: number): Uint8Array {
@@ -42,111 +48,87 @@ function newBytes(value: number): Uint8Array {
 
 function witnesses() {
   return {
-    issuerSecret: (context: WitnessContext<unknown, PrivateState>) => [
-      context.privateState,
-      context.privateState.issuer,
-    ],
-    organizerSecret: (context: WitnessContext<unknown, PrivateState>) => [
-      context.privateState,
-      context.privateState.organizer,
-    ],
-    voterSecret: (context: WitnessContext<unknown, PrivateState>) => [
-      context.privateState,
-      context.privateState.voter,
-    ],
+    issuerSecret: (context: WitnessContext<unknown, PrivateState>) => [context.privateState, context.privateState.issuerSecret],
+    organizerSecret: (context: WitnessContext<unknown, PrivateState>) => [context.privateState, context.privateState.organizerSecret],
+    voterSecret: (context: WitnessContext<unknown, PrivateState>) => [context.privateState, context.privateState.voterSecret],
+    voterChoice: (context: WitnessContext<unknown, PrivateState>) => [context.privateState, context.privateState.voterChoice],
+    voteSalt: (context: WitnessContext<unknown, PrivateState>) => [context.privateState, context.privateState.voteSalt],
     voterPath: (context: WitnessContext<unknown, PrivateState>) => {
-      if (!context.privateState.path) {
-        throw new Error('voterPath was requested before eligibility was issued');
-      }
-      return [context.privateState, context.privateState.path];
+      if (!context.privateState.voterPath) throw new Error("voterPath was requested before eligibility was issued");
+      return [context.privateState, context.privateState.voterPath];
+    },
+    revealPath: (context: WitnessContext<unknown, PrivateState>) => {
+      if (!context.privateState.revealPath) throw new Error("revealPath was requested before commit");
+      return [context.privateState, context.privateState.revealPath];
     },
   };
 }
 
 function setup() {
   const privateState: PrivateState = {
-    issuer: newBytes(1),
-    organizer: newBytes(2),
-    voter: newBytes(3),
+    issuerSecret: newBytes(1),
+    organizerSecret: newBytes(2),
+    voterSecret: newBytes(3),
+    voterChoice: Choice.YES,
+    voteSalt: newBytes(4),
   };
   const contract = new Contract(witnesses());
-  const constructorContext = createConstructorContext(
-    privateState,
-    sampleCoinPublicKey(),
-  );
-  const initial = contract.initialState(
-    constructorContext,
-    privateState.issuer,
-    privateState.organizer,
-    newBytes(9),
-  );
-  const context = createCircuitContext(
-    dummyContractAddress(),
-    initial.currentZswapLocalState,
-    initial.currentContractState,
-    initial.currentPrivateState,
-  );
+  const constructorContext = createConstructorContext(privateState, sampleCoinPublicKey());
+  const initial = contract.initialState(constructorContext, privateState.issuerSecret, privateState.organizerSecret, newBytes(9));
+  const context = createCircuitContext(dummyContractAddress(), initial.currentZswapLocalState, initial.currentContractState, initial.currentPrivateState);
   return { contract, context, privateState };
 }
 
-describe('referendum contract simulator', () => {
-  it('rejects a second vote with the same event-scoped nullifier', () => {
+function issueVoter(contract: Contract<any>, context: any, privateState: PrivateState) {
+  const commitment = eligibilityCommitment(privateState.voterSecret);
+  const issued = contract.impureCircuits.issue(context, commitment);
+  const state = referendumLedger(issued.context.currentQueryContext.state);
+  privateState.voterPath = state.eligibleVoters.findPathForLeaf(commitment);
+  return issued;
+}
+
+describe("referendum contract simulator", () => {
+  it("commits privately and rejects a second vote with the same nullifier", () => {
     const { contract, context, privateState } = setup();
-    const commitment = commitmentFor(privateState.voter);
-
-    const issued = contract.impureCircuits.issue(context, commitment);
-    const stateAfterIssue = referendumLedger(
-      issued.context.currentQueryContext.state,
-    );
-    const path = stateAfterIssue.eligibleVoters.findPathForLeaf(commitment);
-    expect(path).toBeDefined();
-    issued.context.currentPrivateState.path = path;
-
-    const firstVote = contract.impureCircuits.castVote(
-      issued.context,
-      Choice.YES,
-    );
-    const stateAfterFirstVote = referendumLedger(
-      firstVote.context.currentQueryContext.state,
-    );
-
-    expect(stateAfterFirstVote.spentNullifiers.size()).toBe(1n);
-    expect(stateAfterFirstVote.tally.lookup(Choice.YES)).toBe(1n);
-
-    expect(() =>
-      contract.impureCircuits.castVote(firstVote.context, Choice.YES),
-    ).toThrow('This voter has already voted in this referendum');
+    const issued = issueVoter(contract, context, privateState);
+    const firstVote = contract.impureCircuits.castVote(issued.context);
+    const stateAfterCommit = referendumLedger(firstVote.context.currentQueryContext.state);
+    expect(stateAfterCommit.spentNullifiers.size()).toBe(1n);
+    expect(stateAfterCommit.tally.lookup(Choice.YES)).toBe(0n);
+    expect(() => contract.impureCircuits.castVote(firstVote.context)).toThrow("already voted");
   });
 
-  it('rejects an issuer witness that does not match the deployment role', () => {
+  it("reveals one commitment into the correct aggregate and rejects replay", () => {
     const { contract, context, privateState } = setup();
-    const attackerState: PrivateState = {
-      ...privateState,
-      issuer: newBytes(99),
+    const issued = issueVoter(contract, context, privateState);
+    const committed = contract.impureCircuits.castVote(issued.context);
+    const committedState = referendumLedger(committed.context.currentQueryContext.state);
+    const commitment = ballotCommitment(Choice.YES, privateState.voteSalt);
+    privateState.revealPath = committedState.ballotCommitments.findPathForLeaf(commitment);
+    expect(privateState.revealPath).toBeDefined();
+    const closed = contract.impureCircuits.closeVote(committed.context);
+    const revealed = contract.impureCircuits.revealVote(closed.context, Choice.YES, privateState.voteSalt);
+    const state = referendumLedger(revealed.context.currentQueryContext.state);
+    expect(state.phase).toBe(1);
+    expect(state.tally.lookup(Choice.YES)).toBe(1n);
+    expect(state.tally.lookup(Choice.NO)).toBe(0n);
+    expect(state.tally.lookup(Choice.ABSTAIN)).toBe(0n);
+    expect(() => contract.impureCircuits.revealVote(revealed.context, Choice.YES, privateState.voteSalt)).toThrow("already been revealed");
+  });
+
+  it("rejects invalid reveals and protects organizer-only finalization", () => {
+    const { contract, context, privateState } = setup();
+    const issued = issueVoter(contract, context, privateState);
+    const committed = contract.impureCircuits.castVote(issued.context);
+    const closed = contract.impureCircuits.closeVote(committed.context);
+    privateState.revealPath = {
+      leaf: newBytes(77),
+      path: referendumLedger(committed.context.currentQueryContext.state).ballotCommitments.pathForLeaf(0n, newBytes(77)).path,
     };
-    context.currentPrivateState = attackerState;
-
-    expect(() =>
-      contract.impureCircuits.issue(context, commitmentFor(privateState.voter)),
-    ).toThrow('Only the eligibility issuer can issue commitments');
-  });
-
-  it('allows only the organizer to close the referendum', () => {
-    const { contract, context, privateState } = setup();
-    const attackerContext = createCircuitContext(
-      dummyContractAddress(),
-      context.currentZswapLocalState,
-      context.currentQueryContext.state,
-      { ...privateState, organizer: newBytes(88) },
-    );
-
-    expect(() => contract.impureCircuits.closeVote(attackerContext)).toThrow(
-      'Only the organizer can close the referendum',
-    );
-
-    const closed = contract.impureCircuits.closeVote(context);
-    expect(
-      referendumLedger(closed.context.currentQueryContext.state).closed,
-    ).toBe(true);
+    expect(() => contract.impureCircuits.revealVote(closed.context, Choice.NO, newBytes(88))).toThrow();
+    const attackerContext = createCircuitContext(dummyContractAddress(), closed.context.currentZswapLocalState, closed.context.currentQueryContext.state, { ...privateState, organizerSecret: newBytes(88) });
+    expect(() => contract.impureCircuits.finalizeVote(attackerContext)).toThrow("Only the organizer");
+    const finalized = contract.impureCircuits.finalizeVote(closed.context);
+    expect(referendumLedger(finalized.context.currentQueryContext.state).phase).toBe(2);
   });
 });

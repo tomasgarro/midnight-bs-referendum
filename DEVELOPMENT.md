@@ -72,11 +72,13 @@ The Windows-side Claude launch configuration is kept at
 
 ## Validation
 
-For the citizen UI preview on Windows, run the UI workspace directly:
+For the citizen UI prototype on Windows, run the root workspace command. Use
+`localhost`, not `127.0.0.1`, because Passport passkeys require a valid HTTPS
+origin or the localhost relying-party domain:
 
 ```powershell
 Copy-Item ui/.env.example ui/.env
-npm.cmd run dev --workspace midnight-referendum-ui -- --host 0.0.0.0 --port 4173 --strictPort
+npm.cmd run dev -- --host localhost --port 4173 --strictPort
 ```
 
 The demo flow stores only local demo receipts in browser storage. It never
@@ -85,15 +87,33 @@ Preview discovery and Midnight provider assembly; it does not claim a real
 contract submission until the deployed address and generated witness/client
 artifacts are configured.
 
-Run the contract compiler and simulator checks from the repository root:
+Run the contract compiler and simulator checks from the repository root. The
+compiler wrapper accepts `COMPACTC_BIN` (or `COMPACT_BIN` for the legacy CLI),
+so Windows does not accidentally invoke the built-in NTFS `compact.exe`:
 
 ```bash
-yarn validate:contract
+COMPACTC_BIN=/path/to/compactc npm run validate:contract
 ```
 
+The normal Windows workflow is:
+
+```powershell
+npm.cmd run dev -- --host localhost --port 4173
+npm.cmd test
+npm.cmd run build
+```
+
+`npm run build` synchronizes the generated contract runtime, keys, and ZKIR
+assets into the API and `ui/public/managed/referendum`. The wallet-less demo
+is the default; set `VITE_APP_MODE=preview` only when a deployed contract
+address, DApp Connector wallet, and Preview configuration are available.
 These checks are deterministic and do not replace Preview integration testing.
-Once the DApp driver is added, Preview deployment and wallet-backed flows must
-use the endpoints above and the exact matrix versions.
+The current Passport integration supplies profile consent, display identity,
+and an app-scoped profile ID; contract approval still happens through the
+official DApp Connector until Passport exposes reviewed generic contract
+execution. The profile links to Midnight Domains for now; in-app `.night`
+claiming remains a follow-up requiring verified wallet write operations and
+DUST/payment handling.
 
 ## Before publishing
 

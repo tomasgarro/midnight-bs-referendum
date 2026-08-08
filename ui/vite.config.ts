@@ -24,6 +24,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(configDirectory, "./src"),
+      "cross-fetch": path.resolve(configDirectory, "./src/integration/browser-fetch.ts"),
+      "object-inspect": path.resolve(configDirectory, "./src/integration/browser-object-inspect.ts"),
     },
   },
   build: {
