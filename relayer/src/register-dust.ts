@@ -24,8 +24,39 @@ console.log("starting relayer wallet and syncing (this can take several minutes)
 
 const wallet = await startRelayerWallet(config);
 
+/** Minutes to wait for the funding UTXO to appear before giving up. */
+const WAIT_FOR_NIGHT_MS = 8 * 60 * 1000;
+
 try {
-  const state = await wallet.facade.waitForSyncedState();
+  // What this step actually needs is the NIGHT UTXOs, not a fully synced
+  // chain. Waiting on waitForSyncedState() blocks in silence for far longer
+  // than necessary and looks like a hang. Wait for the real precondition, and
+  // narrate progress so the terminal is never dead.
+  let latest: Awaited<ReturnType<typeof wallet.facade.waitForSyncedState>> | null = null;
+  let lastLog = 0;
+
+  const state = await rx.firstValueFrom(
+    wallet.facade.state().pipe(
+      rx.tap((s) => {
+        latest = s;
+        const now = Date.now();
+        if (now - lastLog > 10_000) {
+          lastLog = now;
+          console.log(
+            `  syncing… synced=${s.isSynced} night=${s.unshielded.availableCoins.length} dust=${s.dust.availableCoins.length}`,
+          );
+        }
+      }),
+      rx.filter((s) => s.unshielded.availableCoins.length > 0),
+      rx.timeout({ first: WAIT_FOR_NIGHT_MS, each: WAIT_FOR_NIGHT_MS }),
+    ),
+  ).catch(() => latest);
+
+  if (!state) {
+    console.error("\nThe wallet produced no state at all. Check the indexer URL in relayer/.env.");
+    process.exit(1);
+  }
+
   const nightCoins = state.unshielded.availableCoins;
   const alreadyRegistered = nightCoins.filter((coin) => coin.meta.registeredForDustGeneration);
   const unregistered = nightCoins.filter((coin) => !coin.meta.registeredForDustGeneration);

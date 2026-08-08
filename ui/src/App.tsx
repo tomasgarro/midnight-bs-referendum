@@ -35,6 +35,7 @@ import { DniVerification, type DniVerificationResult } from "@/components/dni-ve
 import { PassportIdentityBridge, PassportBridgeError } from "@/integration/passport";
 import { deriveProfileId } from "@/integration/profile";
 import { getPreviewReadiness } from "@/integration/preview";
+import { useReferendumState } from "@/hooks/use-contract-state";
 import { useWallet } from "@/hooks/use-wallet";
 import { MidnightProvidersProvider, RELAYER_MODE, useMidnightProviders } from "@/providers/midnight-providers";
 import { WalletProvider } from "@/providers/wallet-context";
@@ -201,6 +202,66 @@ function StatusPill({ children }: { children: ReactNode }) {
   return <span className="status-pill"><span className="status-dot" />{children}</span>;
 }
 
+const PHASE_COPY = {
+  COMMIT: { label: "Votación abierta", note: "Los votos están sellados. Todavía no hay nada que contar." },
+  REVEAL: { label: "Recuento en curso", note: "Cada voto se suma a su total sin revelar de quién vino." },
+  FINALIZED: { label: "Resultado final", note: "El recuento está cerrado y publicado." },
+} as const;
+
+/** Live aggregates read from the contract. Never a hardcoded number. */
+function ResultsPanel() {
+  const { state, error } = useReferendumState();
+
+  if (error) {
+    return <section className="results-panel"><div className="results-note"><Info size={20} /><p>No pudimos leer el estado del contrato: {error}</p></div></section>;
+  }
+  if (!state) return <CommitPhasePanel />;
+
+  const phase = PHASE_COPY[state.phase];
+  const votes = (["YES", "NO", "ABSTAIN"] as const).map((key) => ({
+    key,
+    label: key === "YES" ? "Sí" : key === "NO" ? "No" : "Abstención",
+    count: state.tally.get(key) ?? 0n,
+  }));
+  const total = votes.reduce((sum, vote) => sum + vote.count, 0n);
+
+  return (
+    <section className="results-panel" aria-labelledby="results-title">
+      <div className="results-heading">
+        <ChartBar size={22} />
+        <div>
+          <h2 id="results-title">{phase.label}</h2>
+          <p>{phase.note}</p>
+        </div>
+      </div>
+      {state.phase === "COMMIT" ? (
+        <div className="results-note">
+          <ShieldCheck size={20} />
+          <p>
+            {state.issuedVoters.toString()} {state.issuedVoters === 1n ? "persona habilitada" : "personas habilitadas"}.
+            Los totales aparecen recién cuando se abre el recuento.
+          </p>
+        </div>
+      ) : (
+        <div className="tally-list">
+          {votes.map(({ key, label, count }) => {
+            const pct = total === 0n ? 0 : Number((count * 1000n) / total) / 10;
+            return (
+              <div className="tally-row" key={key}>
+                <div className="tally-head"><strong>{label}</strong><span>{count.toString()} · {pct.toFixed(1)}%</span></div>
+                <div className={`tally-bar ${key.toLowerCase()}`}><span style={{ width: `${pct}%` }} /></div>
+              </div>
+            );
+          })}
+          <p className="tally-total">
+            {total.toString()} de {state.issuedVoters.toString()} habilitadas · leído del contrato
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function CommitPhasePanel() {
   return <section className="results-panel" aria-labelledby="results-title"><div className="results-heading"><ChartBar size={22} /><div><h2 id="results-title">Compromiso privado durante la votación</h2><p>Las respuestas se revelan y agregan después del cierre.</p></div></div><div className="results-note"><ShieldCheck size={20} /><p>El contrato registra compromisos anónimos, nullifiers de un voto y publica solo el agregado YES/NO/ABSTAIN durante reveal.</p></div></section>;
 }
@@ -208,7 +269,10 @@ function CommitPhasePanel() {
 function VotesView({ onStartVote }: { onStartVote: (pollId: string) => void }) {
   const [selectedId, setSelectedId] = useState(DEFAULT_POLL.id);
   const selectedPoll = POLLS.find((poll) => poll.id === selectedId) ?? DEFAULT_POLL;
-  return <main className="page-content"><div className="page-heading"><div><p className="eyebrow">Participación ciudadana</p><h1>Votaciones en curso</h1></div><span className="open-count"><span className="status-dot" />{POLLS.length} abiertas</span></div><article className="poll-detail"><div className="poll-meta"><StatusPill>Votación abierta</StatusPill><span>Desde el 24 de mayo de 2026</span></div><h2>{selectedPoll.title}</h2><p className="poll-description">{selectedPoll.description}</p><button className="text-link" onClick={() => setSelectedId(selectedPoll.id)}><Info size={18} /> Leé la propuesta completa <ArrowRight size={16} /></button><div className="poll-stats"><div><Calendar size={20} /><span>Cierre de la votación<strong>{selectedPoll.deadline}</strong></span></div><div><Users size={20} /><span>Personas habilitadas<strong>{selectedPoll.eligible}</strong></span></div></div><button className="primary-button yellow" onClick={() => onStartVote(selectedPoll.id)}><Stamp size={22} /> Votá ahora</button></article><CommitPhasePanel /><section className="project-section" aria-labelledby="projects-title"><div className="section-title-row"><div><p className="eyebrow">Más consultas</p><h2 id="projects-title">Conocé cada propuesta</h2></div><Globe size={22} /></div><div className="project-list">{POLLS.map((poll) => <button key={poll.id} className={`project-row ${poll.id === selectedId ? "selected" : ""}`} onClick={() => setSelectedId(poll.id)}><span className="project-row-icon"><Stamp size={20} /></span><span className="project-row-copy"><strong>{poll.title}</strong><small>{poll.deadline}</small></span><ArrowRight size={18} /></button>)}</div></section></main>;
+  const { state: chainState } = useReferendumState();
+  // Falls back to a dash rather than inventing a number when the contract is unreachable.
+  const eligibleLabel = chainState ? chainState.issuedVoters.toString() : "—";
+  return <main className="page-content"><div className="page-heading"><div><p className="eyebrow">Participación ciudadana</p><h1>Votaciones en curso</h1></div><span className="open-count"><span className="status-dot" />{POLLS.length} abiertas</span></div><article className="poll-detail"><div className="poll-meta"><StatusPill>Votación abierta</StatusPill><span>Desde el 24 de mayo de 2026</span></div><h2>{selectedPoll.title}</h2><p className="poll-description">{selectedPoll.description}</p><button className="text-link" onClick={() => setSelectedId(selectedPoll.id)}><Info size={18} /> Leé la propuesta completa <ArrowRight size={16} /></button><div className="poll-stats"><div><Calendar size={20} /><span>Cierre de la votación<strong>{selectedPoll.deadline}</strong></span></div><div><Users size={20} /><span>Personas habilitadas<strong>{eligibleLabel}</strong></span></div></div><button className="primary-button yellow" onClick={() => onStartVote(selectedPoll.id)}><Stamp size={22} /> Votá ahora</button></article><ResultsPanel /><section className="project-section" aria-labelledby="projects-title"><div className="section-title-row"><div><p className="eyebrow">Más consultas</p><h2 id="projects-title">Conocé cada propuesta</h2></div><Globe size={22} /></div><div className="project-list">{POLLS.map((poll) => <button key={poll.id} className={`project-row ${poll.id === selectedId ? "selected" : ""}`} onClick={() => setSelectedId(poll.id)}><span className="project-row-icon"><Stamp size={20} /></span><span className="project-row-copy"><strong>{poll.title}</strong><small>{poll.deadline}</small></span><ArrowRight size={18} /></button>)}</div></section></main>;
 }
 
 const HOW_IT_WORKS = [
