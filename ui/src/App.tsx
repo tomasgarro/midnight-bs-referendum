@@ -35,6 +35,7 @@ import { DniVerification, type DniVerificationResult } from "@/components/dni-ve
 import { PassportIdentityBridge, PassportBridgeError } from "@/integration/passport";
 import { deriveProfileId } from "@/integration/profile";
 import { getPreviewReadiness } from "@/integration/preview";
+import { useReferendumState } from "@/hooks/use-contract-state";
 import { useWallet } from "@/hooks/use-wallet";
 import { MidnightProvidersProvider, RELAYER_MODE, useMidnightProviders } from "@/providers/midnight-providers";
 import { WalletProvider } from "@/providers/wallet-context";
@@ -201,6 +202,66 @@ function StatusPill({ children }: { children: ReactNode }) {
   return <span className="status-pill"><span className="status-dot" />{children}</span>;
 }
 
+const PHASE_COPY = {
+  COMMIT: { label: "Votación abierta", note: "Los votos están sellados. Todavía no hay nada que contar." },
+  REVEAL: { label: "Recuento en curso", note: "Cada voto se suma a su total sin revelar de quién vino." },
+  FINALIZED: { label: "Resultado final", note: "El recuento está cerrado y publicado." },
+} as const;
+
+/** Live aggregates read from the contract. Never a hardcoded number. */
+function ResultsPanel() {
+  const { state, error } = useReferendumState();
+
+  if (error) {
+    return <section className="results-panel"><div className="results-note"><Info size={20} /><p>No pudimos leer el estado del contrato: {error}</p></div></section>;
+  }
+  if (!state) return <CommitPhasePanel />;
+
+  const phase = PHASE_COPY[state.phase];
+  const votes = (["YES", "NO", "ABSTAIN"] as const).map((key) => ({
+    key,
+    label: key === "YES" ? "Sí" : key === "NO" ? "No" : "Abstención",
+    count: state.tally.get(key) ?? 0n,
+  }));
+  const total = votes.reduce((sum, vote) => sum + vote.count, 0n);
+
+  return (
+    <section className="results-panel" aria-labelledby="results-title">
+      <div className="results-heading">
+        <ChartBar size={22} />
+        <div>
+          <h2 id="results-title">{phase.label}</h2>
+          <p>{phase.note}</p>
+        </div>
+      </div>
+      {state.phase === "COMMIT" ? (
+        <div className="results-note">
+          <ShieldCheck size={20} />
+          <p>
+            {state.issuedVoters.toString()} {state.issuedVoters === 1n ? "persona habilitada" : "personas habilitadas"}.
+            Los totales aparecen recién cuando se abre el recuento.
+          </p>
+        </div>
+      ) : (
+        <div className="tally-list">
+          {votes.map(({ key, label, count }) => {
+            const pct = total === 0n ? 0 : Number((count * 1000n) / total) / 10;
+            return (
+              <div className="tally-row" key={key}>
+                <div className="tally-head"><strong>{label}</strong><span>{count.toString()} · {pct.toFixed(1)}%</span></div>
+                <div className={`tally-bar ${key.toLowerCase()}`}><span style={{ width: `${pct}%` }} /></div>
+              </div>
+            );
+          })}
+          <p className="tally-total">
+            {total.toString()} de {state.issuedVoters.toString()} habilitadas · leído del contrato
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function CommitPhasePanel() {
   return <section className="results-panel" aria-labelledby="results-title"><div className="results-heading"><ChartBar size={22} /><div><h2 id="results-title">Compromiso privado durante la votación</h2><p>Las respuestas se revelan y agregan después del cierre.</p></div></div><div className="results-note"><ShieldCheck size={20} /><p>El contrato registra compromisos anónimos, nullifiers de un voto y publica solo el agregado YES/NO/ABSTAIN durante reveal.</p></div></section>;
 }
@@ -208,7 +269,10 @@ function CommitPhasePanel() {
 function VotesView({ onStartVote }: { onStartVote: (pollId: string) => void }) {
   const [selectedId, setSelectedId] = useState(DEFAULT_POLL.id);
   const selectedPoll = POLLS.find((poll) => poll.id === selectedId) ?? DEFAULT_POLL;
-  return <main className="page-content"><div className="page-heading"><div><p className="eyebrow">Participación ciudadana</p><h1>Votaciones en curso</h1></div><span className="open-count"><span className="status-dot" />{POLLS.length} abiertas</span></div><article className="poll-detail"><div className="poll-meta"><StatusPill>Votación abierta</StatusPill><span>Desde el 24 de mayo de 2026</span></div><h2>{selectedPoll.title}</h2><p className="poll-description">{selectedPoll.description}</p><button className="text-link" onClick={() => setSelectedId(selectedPoll.id)}><Info size={18} /> Leé la propuesta completa <ArrowRight size={16} /></button><div className="poll-stats"><div><Calendar size={20} /><span>Cierre de la votación<strong>{selectedPoll.deadline}</strong></span></div><div><Users size={20} /><span>Personas habilitadas<strong>{selectedPoll.eligible}</strong></span></div></div><button className="primary-button yellow" onClick={() => onStartVote(selectedPoll.id)}><Stamp size={22} /> Votá ahora</button></article><CommitPhasePanel /><section className="project-section" aria-labelledby="projects-title"><div className="section-title-row"><div><p className="eyebrow">Más consultas</p><h2 id="projects-title">Conocé cada propuesta</h2></div><Globe size={22} /></div><div className="project-list">{POLLS.map((poll) => <button key={poll.id} className={`project-row ${poll.id === selectedId ? "selected" : ""}`} onClick={() => setSelectedId(poll.id)}><span className="project-row-icon"><Stamp size={20} /></span><span className="project-row-copy"><strong>{poll.title}</strong><small>{poll.deadline}</small></span><ArrowRight size={18} /></button>)}</div></section></main>;
+  const { state: chainState } = useReferendumState();
+  // Falls back to a dash rather than inventing a number when the contract is unreachable.
+  const eligibleLabel = chainState ? chainState.issuedVoters.toString() : "—";
+  return <main className="page-content"><div className="page-heading"><div><p className="eyebrow">Participación ciudadana</p><h1>Votaciones en curso</h1></div><span className="open-count"><span className="status-dot" />{POLLS.length} abiertas</span></div><article className="poll-detail"><div className="poll-meta"><StatusPill>Votación abierta</StatusPill><span>Desde el 24 de mayo de 2026</span></div><h2>{selectedPoll.title}</h2><p className="poll-description">{selectedPoll.description}</p><button className="text-link" onClick={() => setSelectedId(selectedPoll.id)}><Info size={18} /> Leé la propuesta completa <ArrowRight size={16} /></button><div className="poll-stats"><div><Calendar size={20} /><span>Cierre de la votación<strong>{selectedPoll.deadline}</strong></span></div><div><Users size={20} /><span>Personas habilitadas<strong>{eligibleLabel}</strong></span></div></div><button className="primary-button yellow" onClick={() => onStartVote(selectedPoll.id)}><Stamp size={22} /> Votá ahora</button></article><ResultsPanel /><section className="project-section" aria-labelledby="projects-title"><div className="section-title-row"><div><p className="eyebrow">Más consultas</p><h2 id="projects-title">Conocé cada propuesta</h2></div><Globe size={22} /></div><div className="project-list">{POLLS.map((poll) => <button key={poll.id} className={`project-row ${poll.id === selectedId ? "selected" : ""}`} onClick={() => setSelectedId(poll.id)}><span className="project-row-icon"><Stamp size={20} /></span><span className="project-row-copy"><strong>{poll.title}</strong><small>{poll.deadline}</small></span><ArrowRight size={18} /></button>)}</div></section></main>;
 }
 
 const HOW_IT_WORKS = [
@@ -446,7 +510,7 @@ function VoteFlow({
   return <main className="page-content flow-page"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /> Volver a la propuesta</button><FlowStepper active={activeStep} />
     {stage === "verify" ? <section className="flow-card"><div className="flow-card-icon"><Fingerprint size={32} /></div><p className="eyebrow">Identidad y elegibilidad</p><h1>Antes de votar</h1><h2>Conectá Midnight Passport (opcional)</h2><p>Passport aporta onboarding y un perfil visible. No firma el voto: la wallet Lace aprueba la transacción y el secreto anónimo permanece separado.</p>{passportSession ? <div className="data-summary"><span><CheckCircle size={18} /> Passport conectado{passportSession.displayName ? ` · ${passportSession.displayName}` : ""}</span><span><ShieldCheck size={18} /> Secreto anónimo separado</span></div> : <button className="secondary-button" onClick={onConnectPassport}><Fingerprint size={18} /> Conectar Passport</button>}<div className="trust-line"><ShieldCheck size={20} /><span>Una persona, un voto.</span></div><button className="primary-button yellow" disabled={APP_MODE === "preview" && !previewReady} onClick={() => onStage("document")}>Validar elegibilidad <ArrowRight size={20} /></button>{APP_MODE === "demo" ? <p className="flow-hint">Modo local: podés recorrer la interfaz, pero no se crea ningún comprobante.</p> : null}</section> : null}
     {stage === "document" ? <DniVerification eventSalt={pollId} onVerified={onDniVerified} onCancel={() => onStage("verify")} /> : null}
-    {stage === "eligible" ? <section className="flow-card success-card"><div className="success-symbol"><Check size={34} /></div><p className="eyebrow">{dniResult?.source === "demo" ? "Documento de demostración" : "Documento verificado"}</p><h1>Listo, podés votar</h1><p>La elegibilidad se convierte en un compromiso de membresía anónimo. El documento se leyó en tu dispositivo y no se guardó.</p><div className="data-summary">{dniResult ? <><span><CheckCircle size={18} /> {dniResult.summary.initials} · {dniResult.summary.maskedNumber} · {dniResult.summary.age} años</span><span><CheckCircle size={18} /> Prueba de presencia superada</span></> : <span><CheckCircle size={18} /> Elegibilidad validada</span>}<span><ShieldCheck size={18} /> Ni el número ni las imágenes salieron del teléfono</span></div><button className="primary-button blue" onClick={() => onStage("choose")}>Continuar al voto <ArrowRight size={20} /></button></section> : null}
+    {stage === "eligible" ? <section className="flow-card success-card"><div className="success-symbol"><Check size={34} /></div><p className="eyebrow">{dniResult?.source === "demo" ? "Documento de demostración" : "Documento verificado"}</p><h1>Listo, podés votar</h1><p>La elegibilidad se convierte en un compromiso de membresía anónimo. El documento se leyó en tu dispositivo y no se guardó.</p><div className="data-summary">{dniResult ? <><span><CheckCircle size={18} /> {dniResult.summary.initials} · {dniResult.summary.maskedNumber} · {dniResult.summary.age} años</span><span>{dniResult.livenessPassed ? <><CheckCircle size={18} /> Prueba de presencia superada</> : <><Info size={18} /> Sin comprobación de presencia</>}</span></> : <span><CheckCircle size={18} /> Elegibilidad validada</span>}<span><ShieldCheck size={18} /> Ni el número ni las imágenes salieron del teléfono</span></div><button className="primary-button blue" onClick={() => onStage("choose")}>Continuar al voto <ArrowRight size={20} /></button></section> : null}
     {stage === "choose" ? <section className="flow-card"><p className="eyebrow">Paso 3 de 3</p><h1>Elegí tu respuesta</h1><p>¿Querés priorizar energías renovables en tu comunidad?</p><div className="choice-list"><button className={`choice-button yes ${choice === "YES" ? "selected" : ""}`} onClick={() => onChoice("YES")}><span>Sí</span><small>Estoy de acuerdo</small><span className="choice-check">{choice === "YES" ? <Check size={18} /> : null}</span></button><button className={`choice-button no ${choice === "NO" ? "selected" : ""}`} onClick={() => onChoice("NO")}><span>No</span><small>No estoy de acuerdo</small><span className="choice-check">{choice === "NO" ? <Check size={18} /> : null}</span></button><button className={`choice-button ${choice === "ABSTAIN" ? "selected" : ""}`} onClick={() => onChoice("ABSTAIN")}><span>Abstención</span><small>Prefiero no elegir</small><span className="choice-check">{choice === "ABSTAIN" ? <Check size={18} /> : null}</span></button></div><button className="primary-button blue" disabled={!choice} onClick={() => onStage("review")}>Revisar mi voto <ArrowRight size={20} /></button></section> : null}
      {stage === "review" ? <section className="flow-card"><p className="eyebrow">Revisá antes de confirmar</p><h1>Tu compromiso</h1><div className={`review-choice ${choice === "NO" ? "no" : "yes"}`}><span>{choice}</span><small>La opción se mantiene privada hasta reveal.</small></div><div className="review-notice"><Info size={20} /><p>Passport: {passportSession ? "conectado (opcional)" : "no conectado (opcional)"}. Aprobación de Lace: {walletStatus === "connected" ? "lista" : "pendiente"}. DUST: {dustBalance === null ? "saldo no disponible" : `${dustBalance.toString()} disponible`}.</p></div>{previewError ? <div className="verify-result missing"><Info size={20} /><div><strong>Preview todavía no puede enviar</strong><p>{previewError}</p></div></div> : null}{APP_MODE === "demo" ? <p className="flow-hint">Solo Preview puede crear un comprobante. Conectá Lace y configurá un contrato desplegado.</p> : null}<button className="primary-button yellow" disabled={APP_MODE !== "preview"} onClick={onConfirm}>Confirmar compromiso en Preview <ArrowRight size={20} /></button></section> : null}
     {stage === "processing" ? <section className="flow-card processing-card"><div className="processing-spinner"><ChartBar size={34} /></div><p className="eyebrow">Procesando</p><h1>Preparando tu comprobante</h1><p>El flujo reúne prueba, balanceo DUST/NIGHT, aprobación del wallet y confirmación canónica.</p><div className="processing-track"><span /></div></section> : null}

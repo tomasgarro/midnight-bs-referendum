@@ -37,6 +37,10 @@ type Phase = "intro" | "scanning" | "liveness" | "done" | "unsupported";
 const DEMO_PAYLOAD = "00000000000@DEMOSTRACION@INVITADA@F@30000001@A@01/01/1990@01/01/2020@000";
 
 const SAMPLE_INTERVAL_MS = 100;
+/** One prompt, not two: eight seconds of silence is a long time on a stage. */
+const LIVENESS_STEPS = 1;
+/** Poor light must not trap someone in an unbounded retry loop. */
+const MAX_LIVENESS_FAILURES = 2;
 
 export function DniVerification({
   eventSalt,
@@ -57,6 +61,8 @@ export function DniVerification({
   const [hint, setHint] = useState<string | null>(null);
   const [script, setScript] = useState<LivenessStep[]>([]);
   const [stepIndex, setStepIndex] = useState(0);
+  const [livenessExhausted, setLivenessExhausted] = useState(false);
+  const failuresRef = useRef(0);
   const pendingRef = useRef<{ summary: DniSummary; tag: string; source: "document" | "demo" } | null>(null);
 
   const stopCamera = useCallback(() => {
@@ -112,19 +118,39 @@ export function DniVerification({
       const summary = summariseDni(parsed.document);
       if (!summary) return false;
       // The tag is the only document-derived value that may leave the device.
-      pendingRef.current = {
+      const pending = {
         summary,
         tag: await uniquenessTag(parsed.document, eventSalt),
         source,
       };
-      setScript(createLivenessScript(2));
+      pendingRef.current = pending;
+
+      // The demo document exists for people who have no Argentine DNI to hand,
+      // and it must not then demand a working camera to get past a presence
+      // check — that turns the fallback into a second dead end. It reports
+      // livenessPassed: false, because no presence was actually checked.
+      if (source === "demo") {
+        stopCamera();
+        setPhase("done");
+        onVerified({
+          summary: pending.summary,
+          uniquenessTag: pending.tag,
+          livenessPassed: false,
+          source: "demo",
+        });
+        return true;
+      }
+
+      failuresRef.current = 0;
+      setLivenessExhausted(false);
+      setScript(createLivenessScript(LIVENESS_STEPS));
       setStepIndex(0);
       setHint(null);
       setPhase("liveness");
       await startCamera("user");
       return true;
     },
-    [eventSalt, startCamera, stopCamera],
+    [eventSalt, onVerified, startCamera, stopCamera],
   );
 
   const beginScan = useCallback(async () => {
@@ -170,7 +196,7 @@ export function DniVerification({
 
   // Liveness loop: score one prompt at a time from frame-to-frame motion.
   useEffect(() => {
-    if (phase !== "liveness" || script.length === 0) return;
+    if (phase !== "liveness" || script.length === 0 || livenessExhausted) return;
     const step = script[stepIndex];
     if (!step) return;
 
@@ -196,8 +222,16 @@ export function DniVerification({
 
       const verdict = evaluateStep(samples, step);
       if (verdict !== "passed") {
+        failuresRef.current += 1;
+        if (failuresRef.current >= MAX_LIVENESS_FAILURES) {
+          // A camera that cannot see the gesture will never see it. Offering a
+          // way out beats trapping someone in a loop with only a close button.
+          setHint(null);
+          setLivenessExhausted(true);
+          return;
+        }
         setHint(livenessFailureCopy(verdict));
-        setScript(createLivenessScript(2));
+        setScript(createLivenessScript(LIVENESS_STEPS));
         setStepIndex(0);
         return;
       }
@@ -224,7 +258,29 @@ export function DniVerification({
       active = false;
       window.clearInterval(timer);
     };
-  }, [phase, script, stepIndex, grabFrame, stopCamera, onVerified]);
+  }, [phase, script, stepIndex, livenessExhausted, grabFrame, stopCamera, onVerified]);
+
+  /** Escape hatch after repeated failures; records that presence was not proved. */
+  const continueWithoutPresence = useCallback(() => {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    stopCamera();
+    setPhase("done");
+    onVerified({
+      summary: pending.summary,
+      uniquenessTag: pending.tag,
+      livenessPassed: false,
+      source: pending.source,
+    });
+  }, [onVerified, stopCamera]);
+
+  const retryLiveness = useCallback(() => {
+    failuresRef.current = 0;
+    setLivenessExhausted(false);
+    setHint(null);
+    setScript(createLivenessScript(LIVENESS_STEPS));
+    setStepIndex(0);
+  }, []);
 
   const useDemoDocument = useCallback(async () => {
     setError(null);
@@ -276,7 +332,26 @@ export function DniVerification({
         </>
       ) : null}
 
-      {phase === "scanning" || phase === "liveness" ? (
+      {phase === "liveness" && livenessExhausted ? (
+        <>
+          <div className="flow-card-icon"><Info size={32} /></div>
+          <p className="eyebrow">Paso 2 de 2 · Presencia</p>
+          <h1>No pudimos leer el gesto</h1>
+          <p>
+            Puede ser la luz o la cámara. Podés intentarlo otra vez, o seguir sin la
+            comprobación de presencia: tu documento ya fue verificado y quedará registrado
+            que este paso no se completó.
+          </p>
+          <button className="primary-button blue" onClick={retryLiveness}>
+            Intentar de nuevo <ArrowRight size={20} />
+          </button>
+          <button className="secondary-link" onClick={continueWithoutPresence}>
+            Continuar sin comprobar presencia <ArrowRight size={16} />
+          </button>
+        </>
+      ) : null}
+
+      {phase === "scanning" || (phase === "liveness" && !livenessExhausted) ? (
         <>
           <p className="eyebrow">
             {phase === "scanning" ? "Paso 1 de 2 · Documento" : "Paso 2 de 2 · Presencia"}

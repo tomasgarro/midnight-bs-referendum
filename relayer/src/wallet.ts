@@ -101,6 +101,18 @@ export async function startRelayerWallet(config: RelayerConfig): Promise<Relayer
 }
 
 /**
+ * What `WalletProvider.balanceTx` hands over: proven, but not yet bound. Its
+ * binding tag is `embedded-fr`, not the `pedersen-schnorr` of a finalized
+ * transaction, so it must be deserialized as PreBinding — reading it as
+ * finalized fails with a header-tag mismatch.
+ */
+export type UnboundTransaction = ledger.Transaction<
+  ledger.SignatureEnabled,
+  ledger.Proof,
+  ledger.PreBinding
+>;
+
+/**
  * Balances a proven-but-unfunded transaction against the relayer's own coins
  * and finalizes it, so the citizen never needs NIGHT, DUST, or a wallet.
  *
@@ -111,14 +123,25 @@ export async function startRelayerWallet(config: RelayerConfig): Promise<Relayer
  */
 export async function balanceAndFinalize(
   wallet: RelayerWallet,
-  tx: ledger.FinalizedTransaction,
+  tx: UnboundTransaction,
 ): Promise<ledger.FinalizedTransaction> {
-  const recipe = await wallet.facade.balanceFinalizedTransaction(tx, wallet.secretKeys, {
+  const recipe = await wallet.facade.balanceUnboundTransaction(tx, wallet.secretKeys, {
     ttl: new Date(Date.now() + BALANCE_TTL_MS),
   });
   return wallet.facade.finalizeRecipe(recipe);
 }
 
+/** Proven but unbound — what arrives at /balance. */
+export function deserializeUnbound(hex: string): UnboundTransaction {
+  return ledger.Transaction.deserialize(
+    "signature",
+    "proof",
+    "pre-binding",
+    Uint8Array.from(Buffer.from(hex, "hex")),
+  );
+}
+
+/** Fully bound — what arrives at /submit. */
 export function deserializeFinalized(hex: string): ledger.FinalizedTransaction {
   return ledger.Transaction.deserialize(
     "signature",

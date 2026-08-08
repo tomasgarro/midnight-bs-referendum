@@ -54,38 +54,49 @@ if (issueIndex >= 0 && !/^[0-9a-f]{64}$/i.test(issueCommitment ?? "")) {
   fail("--issue expects a 32-byte commitment as 64 hex characters.");
 }
 
-const { startRelayerWallet } = await import("../relayer/dist/wallet.js");
 const { loadConfig } = await import("../relayer/dist/config.js");
 const api = await import("../api/dist/index.js");
 
 const config = loadConfig();
+const relayerUrl = `http://${config.host}:${config.port}`;
 console.log(`network: ${config.networkId}`);
-console.log("starting relayer wallet and syncing…");
 
-const wallet = await startRelayerWallet(config);
+// Talk to the running relayer rather than starting a second wallet on the same
+// seed: two wallets balancing from the same coins is asking for trouble, and a
+// second full sync costs minutes for information the relayer already has.
+const health = await fetch(`${relayerUrl}/health`)
+  .then((r) => r.json())
+  .catch(() => null);
+if (!health) {
+  fail(`The relayer is not answering on ${relayerUrl}.\nStart it first:  npm run relayer`);
+}
+console.log(`relayer address: ${health.unshieldedAddress}`);
+console.log(`relayer DUST:    ${health.dustBalance}`);
+if (BigInt(health.dustBalance ?? "0") <= 0n) {
+  fail(
+    "The relayer has no DUST, so it cannot pay for a deployment.\n" +
+      "Fund its address with Preview tNIGHT, then run:  npm run relayer:dust",
+  );
+}
 
-try {
-  const state = await wallet.facade.waitForSyncedState();
-  const dust = state.dust.balance(new Date());
-  console.log(`relayer unshielded address: ${String(state.unshielded.address)}`);
-  console.log(`relayer DUST balance:       ${dust.toString()}`);
-  if (dust <= 0n) {
-    fail(
-      "The relayer has no DUST, so it cannot pay for a deployment.\n" +
-        "Fund its unshielded address with Preview NIGHT and register it for DUST generation.",
-    );
-  }
 
   // The deploy path talks to the chain through the same relayer-backed
   // providers the browser uses, so a successful deploy also proves the
   // relayer wiring end to end.
+  // Node's fetch cannot open file:// URLs, so the browser's HTTP-based
+  // FetchZkConfigProvider is useless here — read the assets off disk instead.
+  const { NodeZkConfigProvider } = await import(
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider"
+  );
   const providers = await api.createRelayerProviders({
-    relayerUrl: `http://${config.host}:${config.port}`,
+    relayerUrl,
     proofServerUri: config.provingServerUrl,
     networkId: config.networkId,
     indexerUri: config.indexerHttpUrl,
     indexerWsUri: config.indexerWsUrl,
-    zkConfigBaseUrl: `file://${resolve(ROOT, "ui/public/managed/referendum")}`,
+    zkConfigProvider: new NodeZkConfigProvider(
+      resolve(ROOT, "contracts/referendum/managed/referendum"),
+    ),
   });
 
   const issuerSecret = roleSecret("issuer");
@@ -132,7 +143,4 @@ try {
     console.log(`written to ui/.env`);
     console.log("\nnext: set VITE_APP_MODE=preview in ui/.env and restart the dev server.");
   }
-} finally {
-  await wallet.stop().catch(() => undefined);
-}
 process.exit(0);

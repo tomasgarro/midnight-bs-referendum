@@ -98,6 +98,11 @@ export interface RelayerProviderOptions {
   indexerUri: string;
   indexerWsUri: string;
   zkConfigBaseUrl?: string;
+  /**
+   * Node scripts must pass their own provider: `FetchZkConfigProvider` reads
+   * assets over HTTP, and Node's fetch cannot open `file://` URLs.
+   */
+  zkConfigProvider?: AppProviders["zkConfigProvider"];
 }
 
 async function relayerJson<T>(url: string, body?: unknown): Promise<T> {
@@ -140,10 +145,12 @@ export async function createRelayerProviders(
       ? inMemoryPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>()
       : browserPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>();
   const browserOrigin = typeof window === "undefined" ? "" : window.location.origin;
-  const zkConfigProvider = new FetchZkConfigProvider<ImpureCircuitKeys>(
-    options.zkConfigBaseUrl ?? `${browserOrigin}/managed/referendum`,
-    fetch.bind(globalThis),
-  );
+  const zkConfigProvider =
+    options.zkConfigProvider ??
+    new FetchZkConfigProvider<ImpureCircuitKeys>(
+      options.zkConfigBaseUrl ?? `${browserOrigin}/managed/referendum`,
+      fetch.bind(globalThis),
+    );
   const proofProvider = httpClientProofProvider<ImpureCircuitKeys>(
     options.proofServerUri,
     zkConfigProvider,
@@ -341,6 +348,48 @@ export function createReferendumExecutor(
     closeVote: () => call("closeVote"),
     finalizeVote: () => call("finalizeVote"),
   };
+}
+
+const PHASES = ["COMMIT", "REVEAL", "FINALIZED"] as const;
+const CHOICES = [
+  ["YES", 0],
+  ["NO", 1],
+  ["ABSTAIN", 2],
+] as const;
+
+/**
+ * Reads the public referendum state from canonical ledger data.
+ *
+ * Only aggregates exist here. During COMMIT the tally is genuinely all zeros —
+ * there is nothing to leak, because no choice has been revealed yet — and it
+ * fills in during REVEAL. `member` is checked before `lookup` because a Map
+ * entry the constructor never inserted would otherwise throw.
+ */
+export function parseReferendumLedger(data: ChargedState): ContractState {
+  const ledger = (GeneratedReferendum as any).ledger(data);
+  const tally = new Map<"YES" | "NO" | "ABSTAIN", bigint>();
+  for (const [label, key] of CHOICES) {
+    tally.set(label, ledger.tally.member(key) ? BigInt(ledger.tally.lookup(key)) : 0n);
+  }
+  return {
+    phase: PHASES[Number(ledger.phase)] ?? "COMMIT",
+    closed: Boolean(ledger.closed),
+    issuedVoters: BigInt(ledger.issuedVoters),
+    tally,
+  };
+}
+
+/** Live public state for the results panel. Needs no wallet and no private state. */
+export function watchReferendumState(
+  providers: Pick<AppProviders, "publicDataProvider">,
+  contractAddress: string,
+): Observable<ContractState> {
+  return providers.publicDataProvider
+    .contractStateObservable(contractAddress, { type: "latest" })
+    .pipe(
+      map((state) => parseReferendumLedger(state.data)),
+      retry({ delay: 2_000 }),
+    );
 }
 
 /** Resolve a private voter witness path from the current canonical ledger state. */
