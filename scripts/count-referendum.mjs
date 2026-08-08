@@ -101,14 +101,49 @@ const choiceType = new runtime.CompactTypeEnum(2, 1);
 const commitmentFor = ({ choice, salt }) =>
   runtime.persistentCommit(choiceType, generated.Choice[choice], salt);
 
+const relayerHealth = () =>
+  fetch(`http://${config.host}:${config.port}/health`)
+    .then((r) => r.json())
+    .catch(() => null);
+
+/**
+ * The relayer holds a single DUST coin. Balancing spends it and produces
+ * change, but the wallet cannot spend that change until it observes the block,
+ * and submitting in the meantime is rejected by the node as
+ * InvalidDustSpendProof (custom error 170) — which also leaves the wallet
+ * convinced its coin is gone. Counting submits several transactions in a row,
+ * so it has to wait for the change to land between them.
+ */
+const waitForRelayerChange = async (previousDust, timeoutMs = 180_000) => {
+  const deadline = Date.now() + timeoutMs;
+  process.stdout.write("waiting for the relayer's DUST change to land");
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 5_000));
+    const health = await relayerHealth();
+    if (health?.synced && health.dustBalance !== "0" && health.dustBalance !== previousDust) {
+      console.log(" ok");
+      return health.dustBalance;
+    }
+    process.stdout.write(".");
+  }
+  console.log("");
+  throw new Error(
+    "The relayer's DUST did not recover in time. If it reports dustBalance 0 while " +
+      "still holding NIGHT, restart it so it re-derives its coins from chain.",
+  );
+};
+
 await executor.join(contractAddress, basePrivateState);
 await showTally("before");
+
+let dust = (await relayerHealth())?.dustBalance ?? "0";
 
 const ledgerNow = await readLedger();
 if (ledgerNow.phase === "COMMIT" || Number(ledgerNow.phase) === 0) {
   console.log("\nclosing the commit phase…");
   const receipt = await executor.closeVote();
   console.log(`closed. tx ${receipt.txHash}`);
+  if (ballots.length > 0) dust = await waitForRelayerChange(dust);
 } else {
   console.log("\nalready past the commit phase; skipping closeVote");
 }
@@ -134,6 +169,7 @@ for (const ballot of ballots) {
   await executor.join(contractAddress, { ...basePrivateState, revealPath });
   const receipt = await executor.revealVote(ballot.choice, ballot.salt);
   console.log(`revealed ${ballot.choice}. tx ${receipt.txHash}`);
+  dust = await waitForRelayerChange(dust);
 }
 
 if (!argv.includes("--no-finalize")) {

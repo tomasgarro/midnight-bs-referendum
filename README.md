@@ -301,6 +301,28 @@ Reproduce it with [`scripts/cast-vote-e2e.mjs`](scripts/cast-vote-e2e.mjs).
 The tally reads `phase: COMMIT` with an empty `tally` — correct for
 commit–reveal, since ballots stay hidden until the organizer reveals them.
 
+### A referendum counted end to end
+
+The demo contract above is deliberately left open, so a second referendum was
+deployed to carry the whole lifecycle through to a result on Preview:
+`2c25fabe2d223de25b72247f365f17e5bc8370aeb6ad73826fb7cc1cb6ff757b`.
+
+| Step | Transaction |
+| --- | --- |
+| Issue voter A | `c50d8c5df1163ebe123fd7abcdae003c8e7bcfab7c5d6f9dd341e1b49505424b` |
+| Issue voter B | `3bf2f52bd883e434a30aee54ed742eb269ea512cde8271e2ee953516992d2709` |
+| Ballot A (YES) | `a22c248500f7ccf0b0a152a24eb4bf8fa0724c6e5eb68194995107a7711cc543` |
+| Ballot B (NO) | `705321806a191b8d27a63326dad263aea6a01fe4a9fbf2d7915b8c7060251080` |
+| Reveal YES | `ce04e8aef6541e9fc54ed57724555eb4e68f94311fa0ebec2bce47e7ddf044eb` |
+| Reveal NO | `4b1bb5f2e7d2073df3cd11719c2ef5d0844d98b21a193cc9c6d16d1a02b1a8b1` |
+| Finalize | `0c8106db033f8b4bc4fa6b313bbb63770540f6dbc76743becba3cd61b2b1bb42` |
+
+Final on-chain state: `phase=FINALIZED`, `YES=1 NO=1 ABSTAIN=0`. The tally was
+empty until the reveals, which is the commit–reveal property holding on a real
+chain rather than in the simulator. Counting is driven by
+[`scripts/count-referendum.mjs`](scripts/count-referendum.mjs) and is CLI-only
+— the organizer console is still the top item in *To build next*.
+
 ### Working and verified
 
 - [x] Contract deployed to Preview and readable through the indexer.
@@ -317,6 +339,8 @@ commit–reveal, since ballots stay hidden until the organizer reveals them.
 - [x] 62 tests; all three workspaces typecheck.
 - [x] **A real `castVote` on Preview**, with double-vote and ineligible-voter
       rejection both observed on chain (see above).
+- [x] **A referendum carried all the way to a result on Preview** — deploy,
+      issue, two ballots, close, reveal, finalize (see below).
 
 ### Not yet verified
 
@@ -324,14 +348,6 @@ commit–reveal, since ballots stay hidden until the organizer reveals them.
       from Node against the same providers, relayer, and proof server the UI
       uses; the browser path shares that code but has not itself put a ballot
       on chain.
-- [ ] **Finishing the count on Preview.** `closeVote` has now run against
-      Preview on a throwaway referendum
-      (`2c25fabe2d223de25b72247f365f17e5bc8370aeb6ad73826fb7cc1cb6ff757b`,
-      two ballots cast, phase moved to REVEAL). `revealVote` and `finalizeVote`
-      are driven by [`scripts/count-referendum.mjs`](scripts/count-referendum.mjs)
-      and covered by the simulator, but the reveal has not yet landed on chain:
-      the relayer ran out of DUST first (see below). There is still no
-      organizer interface, so counting is CLI-only.
 - [ ] **The camera path against a physical DNI.** Parsing is unit-tested
       against synthetic payloads; live PDF417 decoding has not been run, and
       ZXing thresholds will likely need tuning. Needs a phone on
