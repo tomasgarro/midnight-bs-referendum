@@ -1,7 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
@@ -12,7 +11,6 @@ const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
-    react(),
     tailwindcss(),
     wasm(),
     topLevelAwait(),
@@ -22,14 +20,26 @@ export default defineConfig({
     }),
   ],
   optimizeDeps: {
-    // The workspace keeps all packages at the repository root. Vite's
-    // Windows dependency optimizer mis-resolves those paths in this layout;
-    // transforms still run normally for the local preview.
-    disabled: true,
+    // The workspace hoists dependencies to the repository root. Keep Vite's
+    // supported optimizer in discovery-disabled mode and let the CommonJS
+    // transform handle React/Phosphor from that shared node_modules folder.
+    noDiscovery: true,
+    include: [],
+  },
+  esbuild: {
+    jsx: "automatic",
+    jsxDev: true,
   },
   resolve: {
     alias: {
       "@": path.resolve(configDirectory, "./src"),
+      "cross-fetch": path.resolve(configDirectory, "./src/integration/browser-fetch.ts"),
+      "object-inspect": path.resolve(configDirectory, "./src/integration/browser-object-inspect.ts"),
+    },
+  },
+  server: {
+    fs: {
+      allow: [path.resolve(configDirectory, "..")],
     },
   },
 });

@@ -2,13 +2,16 @@ pragma language_version 0.23;
 
 import CompactStandardLibrary;
 
-// This first contract slice proves eligibility membership and one-vote-only
-// behavior. See the README in this directory for the remaining tally privacy
-// work required before calling the demo production-complete.
-
 export enum Choice {
   YES,
   NO,
+  ABSTAIN,
+}
+
+export enum Phase {
+  COMMIT,
+  REVEAL,
+  FINALIZED,
 }
 
 // Role keys are committed during deployment. The corresponding secrets are
@@ -21,8 +24,11 @@ export sealed ledger eventId: Bytes<32>;
 // Merkle tree is the source of truth; its root is read by the TypeScript driver
 // when it builds a voter membership witness.
 export ledger eligibleVoters: HistoricMerkleTree<10, Bytes<32>>;
+export ledger ballotCommitments: HistoricMerkleTree<10, Bytes<32>>;
 export ledger spentNullifiers: Set<Bytes<32>>;
+export ledger revealedCommitments: Set<Bytes<32>>;
 export ledger tally: Map<Choice, Uint<32>>;
+export ledger phase: Phase;
 export ledger closed: Boolean;
 export ledger issuedVoters: Counter;
 
@@ -30,6 +36,9 @@ witness issuerSecret(): Bytes<32>;
 witness organizerSecret(): Bytes<32>;
 witness voterSecret(): Bytes<32>;
 witness voterPath(): MerkleTreePath<10, Bytes<32>>;
+witness voterChoice(): Choice;
+witness voteSalt(): Bytes<32>;
+witness revealPath(): MerkleTreePath<10, Bytes<32>>;
 
 circuit roleKey(domain: Bytes<32>, secret: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([domain, secret]);
@@ -50,6 +59,8 @@ constructor(
 
   tally.insert(Choice.YES, 0);
   tally.insert(Choice.NO, 0);
+  tally.insert(Choice.ABSTAIN, 0);
+  phase = Phase.COMMIT;
   closed = false;
 }
 
@@ -61,6 +72,7 @@ export circuit issue(commitment: Bytes<32>): [] {
     roleKey(pad(32, "referendum:issuer:"), issuerSecret()) == issuerKey,
     "Only the eligibility issuer can issue commitments"
   );
+  assert(phase == Phase.COMMIT, "Eligibility cannot be issued after commit phase");
   assert(!eligibleVoters.isFull(), "The eligibility tree is full");
 
   eligibleVoters.insert(disclose(commitment));
@@ -70,8 +82,8 @@ export circuit issue(commitment: Bytes<32>): [] {
 // The voter proves membership without revealing the commitment or secret.
 // The nullifier is the only voter-derived value intentionally written to the
 // public ledger, which prevents replay without linking the voter identity.
-export circuit castVote(choice: Choice): [] {
-  assert(!closed, "Voting is already closed");
+export circuit castVote(): [] {
+  assert(phase == Phase.COMMIT, "Voting is not in the commit phase");
 
   const secret = voterSecret();
   const path = voterPath();
@@ -100,12 +112,11 @@ export circuit castVote(choice: Choice): [] {
 
   spentNullifiers.insert(disclose(nullifier));
 
-  // This is intentionally the temporary public-tally scaffold. Since Compact
-  // ledger state is public, disclose(choice) also makes the selected bucket
-  // observable. Replace this with encrypted ballot commitments before the
-  // product claims tally secrecy before closeVote().
-  const currentTally = tally.lookup(disclose(choice));
-  tally.insert(disclose(choice), currentTally + 1 as Uint<32>);
+  // Choice and salt remain private in the commit transaction. Only the
+  // persistent commitment is inserted into the historic tree.
+  ballotCommitments.insert(
+    persistentCommit<Choice>(voterChoice(), voteSalt())
+  );
 }
 
 export circuit closeVote(): [] {
@@ -113,6 +124,41 @@ export circuit closeVote(): [] {
     roleKey(pad(32, "referendum:organizer"), organizerSecret()) == organizerKey,
     "Only the organizer can close the referendum"
   );
-  assert(!closed, "The referendum is already closed");
+  assert(phase == Phase.COMMIT, "The referendum is not in the commit phase");
+  phase = Phase.REVEAL;
   closed = true;
+}
+
+// Revealing publishes only the selected bucket and the commitment, never the
+// eligibility commitment or the voter nullifier. The path is supplied as a
+// private witness and proves that the commitment was created during commit.
+export circuit revealVote(choice: Choice, salt: Bytes<32>): [] {
+  assert(phase == Phase.REVEAL, "Voting is not in the reveal phase");
+
+  const commitment = persistentCommit<Choice>(choice, salt);
+  const path = revealPath();
+  assert(path.leaf == commitment, "The reveal does not match its commitment");
+  assert(
+    ballotCommitments.checkRoot(
+      disclose(merkleTreePathRoot<10, Bytes<32>>(path))
+    ),
+    "The ballot commitment is not in this referendum"
+  );
+  assert(
+    !revealedCommitments.member(disclose(commitment)),
+    "This ballot has already been revealed"
+  );
+
+  revealedCommitments.insert(disclose(commitment));
+  const currentTally = tally.lookup(disclose(choice));
+  tally.insert(disclose(choice), currentTally + 1 as Uint<32>);
+}
+
+export circuit finalizeVote(): [] {
+  assert(
+    roleKey(pad(32, "referendum:organizer"), organizerSecret()) == organizerKey,
+    "Only the organizer can finalize the referendum"
+  );
+  assert(phase == Phase.REVEAL, "The referendum is not in the reveal phase");
+  phase = Phase.FINALIZED;
 }

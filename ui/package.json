@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run --configLoader runner",
     "test:watch": "vitest",
-    "copy-contract-keys": "echo 'TODO: Configure contract key paths. Example: cp -r ../contract/dist/managed/*/keys/* ./public/keys && cp -r ../contract/dist/managed/*/zkir/* ./public/zkir'"
+    "sync:contract": "node ../scripts/sync-contract-assets.mjs"
   },
   "dependencies": {
     "midnight-referendum-api": "*",

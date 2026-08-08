@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createProviders, type AppProviders } from "midnight-referendum-api";
+import type { AppProviders } from "midnight-referendum-api";
 import { useWallet } from "@/hooks/use-wallet";
 
 interface MidnightProvidersContextValue {
@@ -35,7 +35,8 @@ export function MidnightProvidersProvider({
 
     let cancelled = false;
 
-    createProviders(connectedApi)
+    import("midnight-referendum-api")
+      .then(({ createProviders }) => createProviders(connectedApi))
       .then((p) => {
         if (!cancelled) {
           setProviders(p);
