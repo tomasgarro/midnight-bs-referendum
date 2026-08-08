@@ -22,7 +22,7 @@ tunnel is needed.
 Three processes:
 
 ```bash
-docker start referendum-proof-server   # published on 127.0.0.1:6300
+docker start referendum-proof-server   # published on 127.0.0.1:6300, image 8.1.0
 npm run relayer                        # sponsored fee payer, 127.0.0.1:8790
 npm run dev -- --host localhost --port 4173 --strictPort
 ```
@@ -164,3 +164,24 @@ available, such as some test or server-rendered environments.
 Run the Linux/WSL validation, inspect `git status`, and confirm that no private
 vault material, credentials, `.env` files, or generated artifacts are tracked.
 Use Apache License 2.0 for the public submission.
+
+## Proof server version must match the ledger
+
+Two traps here, both of which fail in ways that look like something else.
+
+The image is `midnightntwrk/proof-server` — note `ntwrk`, not `network`. A
+`midnightnetwork/...` image is not the official one.
+
+The tag must match the ledger. This project uses `ledger-v8@8.1.0`, which
+needs **proof version V2**. A 6.x server speaks only V1 and rejects every
+proof in a few milliseconds with nothing more than "Failed to prove
+transaction".
+
+```bash
+curl -s http://localhost:6300/version         # expect 8.1.0
+curl -s http://localhost:6300/proof-versions  # expect ["V2"]
+```
+
+```bash
+docker run -d --name referendum-proof-server -p 127.0.0.1:6300:6300   --restart unless-stopped midnightntwrk/proof-server:8.1.0   -- midnight-proof-server -v
+```

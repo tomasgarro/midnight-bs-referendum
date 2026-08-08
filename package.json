@@ -29,6 +29,7 @@
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "^4.1.1",
     "typescript": "^5.7.0",
     "vitest": "4.1.0"
   },

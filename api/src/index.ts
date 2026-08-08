@@ -98,6 +98,11 @@ export interface RelayerProviderOptions {
   indexerUri: string;
   indexerWsUri: string;
   zkConfigBaseUrl?: string;
+  /**
+   * Node scripts must pass their own provider: `FetchZkConfigProvider` reads
+   * assets over HTTP, and Node's fetch cannot open `file://` URLs.
+   */
+  zkConfigProvider?: AppProviders["zkConfigProvider"];
 }
 
 async function relayerJson<T>(url: string, body?: unknown): Promise<T> {
@@ -140,10 +145,12 @@ export async function createRelayerProviders(
       ? inMemoryPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>()
       : browserPrivateStateProvider<typeof PRIVATE_STATE_ID, PrivateState>();
   const browserOrigin = typeof window === "undefined" ? "" : window.location.origin;
-  const zkConfigProvider = new FetchZkConfigProvider<ImpureCircuitKeys>(
-    options.zkConfigBaseUrl ?? `${browserOrigin}/managed/referendum`,
-    fetch.bind(globalThis),
-  );
+  const zkConfigProvider =
+    options.zkConfigProvider ??
+    new FetchZkConfigProvider<ImpureCircuitKeys>(
+      options.zkConfigBaseUrl ?? `${browserOrigin}/managed/referendum`,
+      fetch.bind(globalThis),
+    );
   const proofProvider = httpClientProofProvider<ImpureCircuitKeys>(
     options.proofServerUri,
     zkConfigProvider,

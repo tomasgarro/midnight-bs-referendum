@@ -8,6 +8,7 @@ import { loadConfig, type RelayerConfig } from "./config.js";
 import {
   balanceAndFinalize,
   deserializeFinalized,
+  deserializeUnbound,
   serializeFinalized,
   startRelayerWallet,
   type RelayerWallet,
@@ -202,7 +203,7 @@ export async function startServer(): Promise<void> {
           const body = await readJson(request);
           const hex = hexField(body, "tx");
           const balanced = await enqueue(() =>
-            balanceAndFinalize(wallet, deserializeFinalized(hex)),
+            balanceAndFinalize(wallet, deserializeUnbound(hex)),
           );
           send(response, 200, { tx: serializeFinalized(balanced) });
           return;
