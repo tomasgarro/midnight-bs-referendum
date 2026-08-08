@@ -285,7 +285,14 @@ function createCompiledReferendum(privateState: PrivateState) {
     ],
     voterSecret: (context: any) => [context.privateState, context.privateState.voterSecret],
     voterPath: (context: any) => [context.privateState, context.privateState.voterPath],
-    voterChoice: (context: any) => [context.privateState, context.privateState.voterChoice],
+    // The UI stores the choice as a string ("YES" | "NO" | "ABSTAIN"); the
+    // circuit takes the generated Choice enum value.
+    voterChoice: (context: any) => [
+      context.privateState,
+      typeof context.privateState.voterChoice === "string"
+        ? (GeneratedReferendum.Choice as any)[context.privateState.voterChoice]
+        : context.privateState.voterChoice,
+    ],
     voteSalt: (context: any) => [context.privateState, context.privateState.voteSalt],
     revealPath: (context: any) => [context.privateState, context.privateState.revealPath],
   };

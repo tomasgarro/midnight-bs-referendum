@@ -48,8 +48,19 @@ interface Poll {
   id: string;
   title: string;
   description: string;
+  question: string;
   deadline: string;
+  opened: string;
   eligible: string;
+  participation: string;
+  whyNow: string;
+  legalFrame: string;
+  evidence: string;
+  evidenceLabel: string;
+  argumentsFor: string[];
+  argumentsAgainst: string[];
+  uncertainty: string;
+  sources: Array<{ label: string; href: string; detail: string }>;
 }
 
 interface VoteReceipt {
@@ -71,19 +82,145 @@ const EXPLORER_BASE_URL =
 
 const POLLS: Poll[] = [
   {
-    id: "energia-renovable",
-    title: "¿Querés priorizar energías renovables en tu comunidad?",
+    id: "tierras-rurales",
+    title: "Tierras rurales y propiedad extranjera",
     description:
-      "Esta propuesta busca que tu municipio destine más recursos a energías renovables locales y transición energética.",
-    deadline: "7 de agosto de 2026",
-    eligible: "85.432",
+      "Una consulta sobre límites y controles nacionales a la titularidad y posesión extranjera de tierras rurales.",
+    question: "¿Debería Argentina mantener un régimen nacional de límites y controles sobre la titularidad y posesión extranjera de tierras rurales, con revisión pública periódica?",
+    opened: "8 de agosto de 2026",
+    deadline: "16 de agosto de 2026",
+    eligible: "143.820",
+    participation: "8.914 participaciones de demo",
+    whyNow: "La Ley 26.737 continúa bajo debate: el DNU 70/2023 intentó derogarla y una medida cautelar restituyó su vigencia. El expediente PE-13/26 también sigue su propio trámite legislativo.",
+    legalFrame: "Ley 26.737: régimen de tierras rurales, Registro Nacional de Tierras Rurales y límites nacionales, provinciales y departamentales.",
+    evidence: "El registro oficial publicó en agosto de 2025 que más de treinta departamentos superaban el 15% registrado.",
+    evidenceLabel: "HECHO · registro oficial, agosto de 2025",
+    argumentsFor: [
+      "Más trazabilidad sobre titularidad y posesión de tierras rurales.",
+      "Reglas comunes para zonas de frontera, agua y otros recursos estratégicos.",
+    ],
+    argumentsAgainst: [
+      "Los límites uniformes pueden no reflejar diferencias provinciales y productivas.",
+      "Una revisión podría mejorar seguridad jurídica, inversión y trámites.",
+    ],
+    uncertainty: "No se conoce el texto final ni el alcance que tendrá el expediente PE-13/26, ni el efecto de una reforma sobre inversión, producción y ambiente.",
+    sources: [
+      { label: "Ley 26.737", href: "https://www.argentina.gob.ar/normativa/nacional/ley-26737-192150/actualizacion", detail: "Norma primaria" },
+      { label: "Registro de Tierras Rurales", href: "https://www.argentina.gob.ar/justicia/tierrasrurales/datos/extranjerizacion-departamento", detail: "Datos publicados, agosto de 2025" },
+      { label: "Expediente PE-13/26", href: "https://www.senado.gob.ar/parlamentario/comisiones/verExp/13.26/PE/PL", detail: "Estado legislativo" },
+    ],
   },
   {
-    id: "transporte-publico",
-    title: "¿Querés mejorar el transporte público de tu ciudad?",
-    description: "Una consulta ciudadana sobre frecuencias, accesibilidad y unidades de transporte público.",
-    deadline: "21 de agosto de 2026",
-    eligible: "81.120",
+    id: "federalismo-fiscal",
+    title: "Federalismo fiscal y coparticipación",
+    description: "Cómo se distribuyen recursos entre Nación, provincias y CABA, y qué puede cambiar una nueva fórmula.",
+    question: "¿Debería Argentina reformar el régimen de distribución de recursos entre la Nación, las provincias y la Ciudad Autónoma de Buenos Aires para hacerlo más transparente, previsible y revisable?",
+    opened: "8 de agosto de 2026",
+    deadline: "23 de agosto de 2026",
+    eligible: "126.540",
+    participation: "6.382 participaciones de demo",
+    whyNow: "La distribución de recursos, los ATN y las transferencias automáticas siguen siendo centrales para financiar servicios públicos en las jurisdicciones.",
+    legalFrame: "Ley 23.548 y artículo 75 de la Constitución Nacional: reglas de coparticipación y marco para una ley-convenio.",
+    evidence: "La serie oficial de Recursos de Origen Nacional publica montos diarios e informes consolidados para provincias desde 2003.",
+    evidenceLabel: "HECHO · Secretaría de Hacienda, series 2003–2025",
+    argumentsFor: [
+      "Una fórmula publicada podría dar mayor previsibilidad y rendición de cuentas.",
+      "Una reforma puede incorporar transiciones y mecanismos de revisión explícitos.",
+    ],
+    argumentsAgainst: [
+      "Cambiar la fórmula puede generar perdedores relativos y conflictos de transición.",
+      "Mantener reglas conocidas puede evitar incertidumbre fiscal de corto plazo.",
+    ],
+    uncertainty: "No existe una única fórmula acordada ni se conocen sus efectos netos sobre cada provincia, CABA y municipio.",
+    sources: [
+      { label: "Ley 23.548", href: "https://www.argentina.gob.ar/normativa/nacional/ley-23548-21108/actualizacion", detail: "Régimen vigente" },
+      { label: "Recursos de Origen Nacional", href: "https://www.argentina.gob.ar/economia/sechacienda/asuntosprovinciales/ron", detail: "Datos y metodología" },
+      { label: "Gasto Público Consolidado", href: "https://www.argentina.gob.ar/economia/politicaeconomica/macroeconomica/gastopublicoconsolidado", detail: "Base hasta 2024; actualización marzo de 2026" },
+    ],
+  },
+  {
+    id: "reforma-laboral",
+    title: "Reforma laboral y empleo registrado",
+    description: "Una consulta sobre formalización, creación de empleo y garantías laborales explícitas.",
+    question: "¿Debería Argentina modificar el marco laboral vigente para priorizar la formalización y la creación de empleo, manteniendo garantías laborales explícitas y evaluación pública de impacto?",
+    opened: "8 de agosto de 2026",
+    deadline: "30 de agosto de 2026",
+    eligible: "119.760",
+    participation: "5.107 participaciones de demo",
+    whyNow: "La Ley 27.802 y sus mecanismos de transición abren una discusión sobre costos, negociación colectiva, derechos y empleo registrado.",
+    legalFrame: "Ley 27.802 y estadísticas del mercado de trabajo: la consulta no reemplaza el texto legal ni su reglamentación.",
+    evidence: "La EPH de INDEC y los registros SIPA miden universos distintos; por eso sus cifras no deben confundirse.",
+    evidenceLabel: "HECHO · metodología INDEC / Secretaría de Trabajo",
+    argumentsFor: [
+      "Cambiar incentivos podría facilitar la registración y la creación de puestos formales.",
+      "La evaluación pública permitiría seguir costos e impactos de implementación.",
+    ],
+    argumentsAgainst: [
+      "La formalización no garantiza por sí sola empleo de calidad ni mejores salarios.",
+      "Cambios amplios pueden debilitar protecciones si no se definen límites y transición.",
+    ],
+    uncertainty: "No se puede atribuir un cambio futuro del empleo a una ley sin aislar el ciclo económico, el cumplimiento y la reglamentación.",
+    sources: [
+      { label: "Ley 27.802", href: "https://www.argentina.gob.ar/normativa/nacional/ley-27802-423680/texto", detail: "Norma primaria" },
+      { label: "Mercado de trabajo INDEC", href: "https://www.indec.gob.ar/indec/web/Nivel4-Tema-4-31-58", detail: "EPH y metodología" },
+      { label: "Empleo registrado", href: "https://www.argentina.gob.ar/trabajo/estadisticas/situacion-y-evolucion-del-trabajo-registrado", detail: "Informe administrativo, abril de 2026" },
+    ],
+  },
+  {
+    id: "jubilaciones",
+    title: "Jubilaciones y sostenibilidad previsional",
+    description: "Cobertura, suficiencia de prestaciones y sostenibilidad financiera del sistema previsional.",
+    question: "¿Debería Argentina reformar el sistema previsional para mejorar simultáneamente su sostenibilidad financiera, la cobertura y la suficiencia de las prestaciones, protegiendo a quienes no completan aportes?",
+    opened: "8 de agosto de 2026",
+    deadline: "6 de septiembre de 2026",
+    eligible: "132.900",
+    participation: "4.618 participaciones de demo",
+    whyNow: "El debate previsional combina movilidad, financiamiento, cobertura contributiva y no contributiva, y protección a trayectorias laborales incompletas.",
+    legalFrame: "Ley 24.241: estructura del SIPA, prestaciones, requisitos y reglas de movilidad dentro del marco previsional nacional.",
+    evidence: "ANSES publica caracterizaciones e informes estadísticos que deben leerse con su fecha de corte y metodología.",
+    evidenceLabel: "HECHO · ANSES, informe a junio de 2025",
+    argumentsFor: [
+      "Una revisión integral puede hacer visibles los parámetros de cobertura, financiamiento y transición.",
+      "La protección explícita de aportes incompletos puede ordenar reglas hoy fragmentadas.",
+    ],
+    argumentsAgainst: [
+      "Reformas de parámetros pueden trasladar costos a jubilados actuales o futuros.",
+      "La sostenibilidad financiera no garantiza por sí sola prestaciones suficientes.",
+    ],
+    uncertainty: "No hay una propuesta única que resuelva a la vez cobertura, suficiencia y financiamiento; sus efectos dependen del diseño y la transición.",
+    sources: [
+      { label: "Ley 24.241", href: "https://www.argentina.gob.ar/normativa/nacional/639/actualizacion", detail: "Marco previsional" },
+      { label: "Caracterización ANSES", href: "https://www.anses.gob.ar/caracterizacion-de-las-prestaciones-previsionales", detail: "Alcance y metodología" },
+      { label: "Estadísticas de la seguridad social", href: "https://www.anses.gob.ar/sites/default/files/2025-11/Informe%20de%20Estad%C3%ADsticas%20de%20la%20SS%20II%20Trim.%202025.pdf", detail: "Datos a junio de 2025" },
+    ],
+  },
+  {
+    id: "energia-renovable",
+    title: "Energía, tarifas y transición renovable",
+    description: "Más renovables y redes, con protección focalizada para usuarios vulnerables.",
+    question: "¿Debería Argentina priorizar una transición energética con mayor participación renovable, expansión de redes y protección focalizada para usuarios vulnerables?",
+    opened: "8 de agosto de 2026",
+    deadline: "13 de septiembre de 2026",
+    eligible: "138.260",
+    participation: "7.246 participaciones de demo",
+    whyNow: "Las metas de renovables, la generación distribuida, las tarifas y el esquema de subsidios focalizados requieren decisiones que combinan inversión y protección.",
+    legalFrame: "Leyes 27.191 y 27.424, junto con el esquema de Subsidios Energéticos Focalizados (SEF).",
+    evidence: "La meta legal de 20% renovable al 31 de diciembre de 2025 es un objetivo normativo; no es un dato observado.",
+    evidenceLabel: "HECHO · Ley 27.191, meta normativa",
+    argumentsFor: [
+      "Renovables, redes y generación distribuida pueden diversificar la matriz y atraer inversión.",
+      "La focalización puede concentrar protección en usuarios que más la necesitan.",
+    ],
+    argumentsAgainst: [
+      "La expansión exige red, respaldo y financiamiento; los costos no desaparecen.",
+      "Una transición rápida puede aumentar tarifas o dejar fuera a usuarios mal clasificados.",
+    ],
+    uncertainty: "La tecnología, el presupuesto, el cronograma y el alcance del SEF no están definidos por esta pregunta; tampoco hay un único indicador de pobreza energética.",
+    sources: [
+      { label: "Ley 27.191", href: "https://www.argentina.gob.ar/normativa/nacional/ley-27191-253626/actualizacion", detail: "Fomento de renovables" },
+      { label: "Ley 27.424", href: "https://www.argentina.gob.ar/normativa/nacional/ley-27424-305179/actualizacion", detail: "Generación distribuida" },
+      { label: "Subsidios Energéticos Focalizados", href: "https://www.argentina.gob.ar/normativa/nacional/decreto-943-2025-422016", detail: "Decreto 943/2025" },
+    ],
   },
 ];
 const DEFAULT_POLL = POLLS[0]!;
@@ -266,13 +403,111 @@ function CommitPhasePanel() {
   return <section className="results-panel" aria-labelledby="results-title"><div className="results-heading"><ChartBar size={22} /><div><h2 id="results-title">Compromiso privado durante la votación</h2><p>Las respuestas se revelan y agregan después del cierre.</p></div></div><div className="results-note"><ShieldCheck size={20} /><p>El contrato registra compromisos anónimos, nullifiers de un voto y publica solo el agregado YES/NO/ABSTAIN durante reveal.</p></div></section>;
 }
 
-function VotesView({ onStartVote }: { onStartVote: (pollId: string) => void }) {
+function VotesView({
+  onStartVote,
+  onOpenPolicy,
+}: {
+  onStartVote: (pollId: string) => void;
+  onOpenPolicy: (pollId: string) => void;
+}) {
   const [selectedId, setSelectedId] = useState(DEFAULT_POLL.id);
   const selectedPoll = POLLS.find((poll) => poll.id === selectedId) ?? DEFAULT_POLL;
   const { state: chainState } = useReferendumState();
-  // Falls back to a dash rather than inventing a number when the contract is unreachable.
   const eligibleLabel = chainState ? chainState.issuedVoters.toString() : "—";
-  return <main className="page-content"><div className="page-heading"><div><p className="eyebrow">Participación ciudadana</p><h1>Votaciones en curso</h1></div><span className="open-count"><span className="status-dot" />{POLLS.length} abiertas</span></div><article className="poll-detail"><div className="poll-meta"><StatusPill>Votación abierta</StatusPill><span>Desde el 24 de mayo de 2026</span></div><h2>{selectedPoll.title}</h2><p className="poll-description">{selectedPoll.description}</p><button className="text-link" onClick={() => setSelectedId(selectedPoll.id)}><Info size={18} /> Leé la propuesta completa <ArrowRight size={16} /></button><div className="poll-stats"><div><Calendar size={20} /><span>Cierre de la votación<strong>{selectedPoll.deadline}</strong></span></div><div><Users size={20} /><span>Personas habilitadas<strong>{eligibleLabel}</strong></span></div></div><button className="primary-button yellow" onClick={() => onStartVote(selectedPoll.id)}><Stamp size={22} /> Votá ahora</button></article><ResultsPanel /><section className="project-section" aria-labelledby="projects-title"><div className="section-title-row"><div><p className="eyebrow">Más consultas</p><h2 id="projects-title">Conocé cada propuesta</h2></div><Globe size={22} /></div><div className="project-list">{POLLS.map((poll) => <button key={poll.id} className={`project-row ${poll.id === selectedId ? "selected" : ""}`} onClick={() => setSelectedId(poll.id)}><span className="project-row-icon"><Stamp size={20} /></span><span className="project-row-copy"><strong>{poll.title}</strong><small>{poll.deadline}</small></span><ArrowRight size={18} /></button>)}</div></section></main>;
+  return (
+    <main className="page-content">
+      <div className="page-heading">
+        <div><p className="eyebrow">Participación ciudadana</p><h1>Votaciones en curso</h1></div>
+        <span className="open-count"><span className="status-dot" />{POLLS.length} abiertas</span>
+      </div>
+      <article className="poll-detail">
+        <div className="poll-meta"><StatusPill>Votación abierta</StatusPill><span>Desde el {selectedPoll.opened}</span></div>
+        <h2>{selectedPoll.title}</h2>
+        <p className="poll-description">{selectedPoll.description}</p>
+        <button className="text-link" onClick={() => onOpenPolicy(selectedPoll.id)}><Info size={18} /> Leé la propuesta completa <ArrowRight size={16} /></button>
+        <div className="poll-stats">
+          <div><Calendar size={20} /><span>Cierre de la votación<strong>{selectedPoll.deadline}</strong></span></div>
+          <div><Users size={20} /><span>Personas habilitadas<strong>{eligibleLabel}</strong></span></div>
+        </div>
+        <p className="demo-stat"><Info size={14} /> {selectedPoll.participation}. Cifra simulada para este prototipo.</p>
+        <button className="primary-button yellow" onClick={() => onStartVote(selectedPoll.id)}><Stamp size={22} /> Votá ahora</button>
+      </article>
+      <ResultsPanel />
+      <section className="project-section" aria-labelledby="projects-title">
+        <div className="section-title-row"><div><p className="eyebrow">Biblioteca de políticas</p><h2 id="projects-title">Conocé cada propuesta</h2></div><Globe size={22} /></div>
+        <div className="project-list">{POLLS.map((poll) => <button key={poll.id} className={`project-row ${poll.id === selectedId ? "selected" : ""}`} onClick={() => setSelectedId(poll.id)}><span className="project-row-icon"><BookOpen size={20} /></span><span className="project-row-copy"><strong>{poll.title}</strong><small>Cierra el {poll.deadline}</small></span><ArrowRight size={18} /></button>)}</div>
+      </section>
+    </main>
+  );
+}
+
+function PolicyDetailView({
+  poll,
+  onBack,
+  onStartVote,
+}: {
+  poll: Poll;
+  onBack: () => void;
+  onStartVote: (pollId: string) => void;
+}) {
+  return (
+    <main className="page-content policy-page">
+      <button className="back-button" onClick={onBack}><ArrowLeft size={18} /> Volver a votaciones</button>
+      <div className="policy-status"><StatusPill>Consulta ciudadana independiente</StatusPill><span>Actualizado: 8 de agosto de 2026</span></div>
+      <section className="policy-hero">
+        <p className="eyebrow">Resumen para decidir</p>
+        <h1>{poll.title}</h1>
+        <p>{poll.question}</p>
+        <div className="policy-facts"><span><Calendar size={17} /> Cierra: <strong>{poll.deadline}</strong></span><span><Users size={17} /> <strong>{poll.eligible}</strong> habilitadas*</span></div>
+      </section>
+
+      <section className="policy-section">
+        <div className="section-title-row"><div><p className="eyebrow">En dos minutos</p><h2>¿De qué se trata?</h2></div><BookOpen size={22} /></div>
+        <p>{poll.whyNow}</p>
+        <div className="evidence-card"><span>{poll.evidenceLabel}</span><p>{poll.evidence}</p></div>
+      </section>
+
+      <section className="policy-section policy-frame">
+        <p className="eyebrow">Marco vigente</p>
+        <p>{poll.legalFrame}</p>
+      </section>
+
+      <section className="policy-section" aria-labelledby="arguments-title">
+        <div className="section-title-row"><div><p className="eyebrow">Perspectivas</p><h2 id="arguments-title">Argumentos en discusión</h2></div><Question size={22} /></div>
+        <p className="policy-section-intro">Son posiciones para evaluar, no recomendaciones del proyecto.</p>
+        <div className="argument-columns">
+          <article className="argument-card for"><h3>A favor de la propuesta</h3><ul>{poll.argumentsFor.map((item) => <li key={item}><Check size={15} /> {item}</li>)}</ul></article>
+          <article className="argument-card against"><h3>A favor de revisar o limitar</h3><ul>{poll.argumentsAgainst.map((item) => <li key={item}><Info size={15} /> {item}</li>)}</ul></article>
+        </div>
+      </section>
+
+      <section className="policy-section uncertainty-card">
+        <p className="eyebrow">Incertidumbre</p><p>{poll.uncertainty}</p>
+      </section>
+
+      <section className="policy-section" aria-labelledby="outcomes-title">
+        <div className="section-title-row"><div><p className="eyebrow">Qué expresa cada opción</p><h2 id="outcomes-title">Tu voto no cambia la ley</h2></div><Stamp size={22} /></div>
+        <div className="outcome-list">
+          <div><strong>Sí</strong><p>Expresa apoyo a priorizar la propuesta en los términos de esta consulta.</p></div>
+          <div><strong>No</strong><p>Expresa que no apoyás priorizarla en estos términos.</p></div>
+          <div><strong>Abstención</strong><p>Registra que preferís no tomar una posición binaria.</p></div>
+        </div>
+      </section>
+
+      <section className="policy-section eligibility-card">
+        <p className="eyebrow">Reglas de esta demo</p>
+        <p>Podés recorrer la verificación si sos ciudadano/a argentino/a, tenés 16 años o más y un DNI para escanear. Son requisitos de experiencia del prototipo, no un padrón oficial.</p>
+      </section>
+
+      <section className="policy-section" aria-labelledby="sources-title">
+        <div className="section-title-row"><div><p className="eyebrow">Para profundizar</p><h2 id="sources-title">Fuentes primarias</h2></div><Globe size={22} /></div>
+        <div className="source-list">{poll.sources.map((source) => <a key={source.href} href={source.href} target="_blank" rel="noreferrer"><span><strong>{source.label}</strong><small>{source.detail}</small></span><ArrowRight size={17} /></a>)}</div>
+      </section>
+
+      <p className="independent-note"><Info size={16} /> * Las personas habilitadas y la participación son cifras simuladas. Esta consulta no es un referéndum oficial ni tiene efecto legal.</p>
+      <button className="primary-button yellow" onClick={() => onStartVote(poll.id)}><Stamp size={22} /> Votar esta consulta</button>
+    </main>
+  );
 }
 
 const HOW_IT_WORKS = [
@@ -360,7 +595,7 @@ const GLOSSARY = [
   { term: "Prueba de conocimiento cero", meaning: "Una demostración de que algo es cierto que no revela por qué lo es." },
 ];
 
-function UnderstandView() {
+function UnderstandView({ onOpenPolicy }: { onOpenPolicy: (pollId: string) => void }) {
   return (
     <main className="page-content">
       <section className="welcome-panel">
@@ -370,6 +605,17 @@ function UnderstandView() {
           <p>Antes de votar, entendé qué se hace público, qué queda privado y por qué podés comprobarlo vos.</p>
         </div>
         <img className="gaucho" src="/assets/gaucho-waving.png" alt="Ilustración de un gaucho saludando" />
+      </section>
+
+      <section className="library-section" aria-labelledby="library-title">
+        <div className="section-title-row">
+          <div><p className="eyebrow">Biblioteca editorial</p><h2 id="library-title">Antes de votar, leé</h2></div>
+          <BookOpen size={22} />
+        </div>
+        <p className="section-lead">Cinco dossiers con marco vigente, puntos de vista contrapuestos, incertidumbres y fuentes oficiales fechadas.</p>
+        <div className="library-list">
+          {POLLS.map((poll) => <button key={poll.id} onClick={() => onOpenPolicy(poll.id)}><span><strong>{poll.title}</strong><small>Consulta, fuentes y consecuencias posibles</small></span><ArrowRight size={18} /></button>)}
+        </div>
       </section>
 
       <section className="how-section" aria-labelledby="how-title">
@@ -506,13 +752,14 @@ function VoteFlow({
   passportSession: PassportSession | null; onConnectPassport: () => void; previewError: string | null; receipt: VoteReceipt | null; previewReady: boolean; dustBalance?: bigint | null;
   pollId: string; dniResult: DniVerificationResult | null; onDniVerified: (result: DniVerificationResult) => void;
 }) {
+  const poll = POLLS.find((item) => item.id === pollId) ?? DEFAULT_POLL;
   const activeStep = stage === "verify" || stage === "document" || stage === "eligible" ? 2 : 3;
   return <main className="page-content flow-page"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /> Volver a la propuesta</button><FlowStepper active={activeStep} />
-    {stage === "verify" ? <section className="flow-card"><div className="flow-card-icon"><Fingerprint size={32} /></div><p className="eyebrow">Identidad y elegibilidad</p><h1>Antes de votar</h1><h2>Conectá Midnight Passport (opcional)</h2><p>Passport aporta onboarding y un perfil visible. No firma el voto: la wallet Lace aprueba la transacción y el secreto anónimo permanece separado.</p>{passportSession ? <div className="data-summary"><span><CheckCircle size={18} /> Passport conectado{passportSession.displayName ? ` · ${passportSession.displayName}` : ""}</span><span><ShieldCheck size={18} /> Secreto anónimo separado</span></div> : <button className="secondary-button" onClick={onConnectPassport}><Fingerprint size={18} /> Conectar Passport</button>}<div className="trust-line"><ShieldCheck size={20} /><span>Una persona, un voto.</span></div><button className="primary-button yellow" disabled={APP_MODE === "preview" && !previewReady} onClick={() => onStage("document")}>Validar elegibilidad <ArrowRight size={20} /></button>{APP_MODE === "demo" ? <p className="flow-hint">Modo local: podés recorrer la interfaz, pero no se crea ningún comprobante.</p> : null}</section> : null}
+    {stage === "verify" ? <section className="flow-card"><div className="flow-card-icon"><Fingerprint size={32} /></div><p className="eyebrow">Identidad y elegibilidad</p><h1>Antes de votar</h1><h2>Conectá Midnight Passport (opcional)</h2><p>Passport aporta onboarding y un perfil visible. No firma el voto: la wallet Lace aprueba la transacción y el secreto anónimo permanece separado.</p>{passportSession ? <div className="data-summary"><span><CheckCircle size={18} /> Passport conectado{passportSession.displayName ? ` · ${passportSession.displayName}` : ""}</span><span><ShieldCheck size={18} /> Secreto anónimo separado</span></div> : <button className="secondary-button" onClick={onConnectPassport}><Fingerprint size={18} /> Conectar Passport</button>}<div className="flow-requirements"><strong>Reglas de esta demo</strong><span>Ciudadanía argentina · 16+ · DNI verificable</span></div><div className="trust-line"><ShieldCheck size={20} /><span>Una persona, un voto.</span></div><button className="primary-button yellow" disabled={APP_MODE === "preview" && !previewReady} onClick={() => onStage("document")}>Validar elegibilidad <ArrowRight size={20} /></button>{APP_MODE === "demo" ? <p className="flow-hint">Modo local: podés recorrer la interfaz, pero no se crea ningún comprobante.</p> : null}</section> : null}
     {stage === "document" ? <DniVerification eventSalt={pollId} onVerified={onDniVerified} onCancel={() => onStage("verify")} /> : null}
     {stage === "eligible" ? <section className="flow-card success-card"><div className="success-symbol"><Check size={34} /></div><p className="eyebrow">{dniResult?.source === "demo" ? "Documento de demostración" : "Documento verificado"}</p><h1>Listo, podés votar</h1><p>La elegibilidad se convierte en un compromiso de membresía anónimo. El documento se leyó en tu dispositivo y no se guardó.</p><div className="data-summary">{dniResult ? <><span><CheckCircle size={18} /> {dniResult.summary.initials} · {dniResult.summary.maskedNumber} · {dniResult.summary.age} años</span><span>{dniResult.livenessPassed ? <><CheckCircle size={18} /> Prueba de presencia superada</> : <><Info size={18} /> Sin comprobación de presencia</>}</span></> : <span><CheckCircle size={18} /> Elegibilidad validada</span>}<span><ShieldCheck size={18} /> Ni el número ni las imágenes salieron del teléfono</span></div><button className="primary-button blue" onClick={() => onStage("choose")}>Continuar al voto <ArrowRight size={20} /></button></section> : null}
-    {stage === "choose" ? <section className="flow-card"><p className="eyebrow">Paso 3 de 3</p><h1>Elegí tu respuesta</h1><p>¿Querés priorizar energías renovables en tu comunidad?</p><div className="choice-list"><button className={`choice-button yes ${choice === "YES" ? "selected" : ""}`} onClick={() => onChoice("YES")}><span>Sí</span><small>Estoy de acuerdo</small><span className="choice-check">{choice === "YES" ? <Check size={18} /> : null}</span></button><button className={`choice-button no ${choice === "NO" ? "selected" : ""}`} onClick={() => onChoice("NO")}><span>No</span><small>No estoy de acuerdo</small><span className="choice-check">{choice === "NO" ? <Check size={18} /> : null}</span></button><button className={`choice-button ${choice === "ABSTAIN" ? "selected" : ""}`} onClick={() => onChoice("ABSTAIN")}><span>Abstención</span><small>Prefiero no elegir</small><span className="choice-check">{choice === "ABSTAIN" ? <Check size={18} /> : null}</span></button></div><button className="primary-button blue" disabled={!choice} onClick={() => onStage("review")}>Revisar mi voto <ArrowRight size={20} /></button></section> : null}
-     {stage === "review" ? <section className="flow-card"><p className="eyebrow">Revisá antes de confirmar</p><h1>Tu compromiso</h1><div className={`review-choice ${choice === "NO" ? "no" : "yes"}`}><span>{choice}</span><small>La opción se mantiene privada hasta reveal.</small></div><div className="review-notice"><Info size={20} /><p>Passport: {passportSession ? "conectado (opcional)" : "no conectado (opcional)"}. Aprobación de Lace: {walletStatus === "connected" ? "lista" : "pendiente"}. DUST: {dustBalance === null ? "saldo no disponible" : `${dustBalance.toString()} disponible`}.</p></div>{previewError ? <div className="verify-result missing"><Info size={20} /><div><strong>Preview todavía no puede enviar</strong><p>{previewError}</p></div></div> : null}{APP_MODE === "demo" ? <p className="flow-hint">Solo Preview puede crear un comprobante. Conectá Lace y configurá un contrato desplegado.</p> : null}<button className="primary-button yellow" disabled={APP_MODE !== "preview"} onClick={onConfirm}>Confirmar compromiso en Preview <ArrowRight size={20} /></button></section> : null}
+    {stage === "choose" ? <section className="flow-card"><p className="eyebrow">Paso 3 de 3</p><h1>Elegí tu respuesta</h1><p>{poll.question}</p><div className="choice-list"><button className={`choice-button yes ${choice === "YES" ? "selected" : ""}`} onClick={() => onChoice("YES")}><span>Sí</span><small>Estoy de acuerdo con priorizar esta propuesta</small><span className="choice-check">{choice === "YES" ? <Check size={18} /> : null}</span></button><button className={`choice-button no ${choice === "NO" ? "selected" : ""}`} onClick={() => onChoice("NO")}><span>No</span><small>No estoy de acuerdo con priorizarla así</small><span className="choice-check">{choice === "NO" ? <Check size={18} /> : null}</span></button><button className={`choice-button abstain ${choice === "ABSTAIN" ? "selected" : ""}`} onClick={() => onChoice("ABSTAIN")}><span>Abstención</span><small>Prefiero no tomar una posición binaria</small><span className="choice-check">{choice === "ABSTAIN" ? <Check size={18} /> : null}</span></button></div><button className="primary-button blue" disabled={!choice} onClick={() => onStage("review")}>Revisar mi voto <ArrowRight size={20} /></button></section> : null}
+     {stage === "review" ? <section className="flow-card"><p className="eyebrow">Revisá antes de confirmar</p><h1>Tu compromiso</h1><p className="review-poll-title">{poll.title}</p><div className={`review-choice ${choice === "NO" ? "no" : choice === "ABSTAIN" ? "abstain" : "yes"}`}><span>{choice === "YES" ? "Sí" : choice === "NO" ? "No" : "Abstención"}</span><small>La opción se mantiene privada hasta reveal.</small></div><div className="review-notice"><Info size={20} /><p>Passport: {passportSession ? "conectado (opcional)" : "no conectado (opcional)"}. Aprobación de Lace: {walletStatus === "connected" ? "lista" : "pendiente"}. DUST: {dustBalance === null ? "saldo no disponible" : `${dustBalance.toString()} disponible`}.</p></div>{previewError ? <div className="verify-result missing"><Info size={20} /><div><strong>Preview todavía no puede enviar</strong><p>{previewError}</p></div></div> : null}{APP_MODE === "demo" ? <p className="flow-hint">Solo Preview puede crear un comprobante. Conectá Lace y configurá un contrato desplegado.</p> : null}<button className="primary-button yellow" disabled={APP_MODE !== "preview"} onClick={onConfirm}>Confirmar compromiso en Preview <ArrowRight size={20} /></button></section> : null}
     {stage === "processing" ? <section className="flow-card processing-card"><div className="processing-spinner"><ChartBar size={34} /></div><p className="eyebrow">Procesando</p><h1>Preparando tu comprobante</h1><p>El flujo reúne prueba, balanceo DUST/NIGHT, aprobación del wallet y confirmación canónica.</p><div className="processing-track"><span /></div></section> : null}
     {stage === "receipt" ? <section className="flow-card success-card"><div className="success-symbol"><Check size={34} /></div><p className="eyebrow">Compromiso registrado</p><h1>Gracias por participar</h1><p>Guardá este identificador para verificar el resultado.</p><div className="receipt-box"><span>Comprobante Preview</span><div className="receipt-box-id"><strong>{receipt?.id ?? "Disponible en Verificá"}</strong>{receipt ? <CopyReceiptButton receiptId={receipt.id} /> : null}</div><small>Confirmado en Preview.</small></div>{receipt?.explorerUrl ? <a className="text-link" href={receipt.explorerUrl} target="_blank" rel="noreferrer">Abrir transacción en explorer <ArrowRight size={16} /></a> : null}<button className="primary-button blue" onClick={onViewReceipt}>Ver mi comprobante <ArrowRight size={20} /></button></section> : null}
   </main>;
@@ -521,6 +768,7 @@ function VoteFlow({
 function CivicApp() {
   const [tab, setTab] = useState<Tab>("votes");
   const [flowStage, setFlowStage] = useState<FlowStage | null>(null);
+  const [policyDetailId, setPolicyDetailId] = useState<string | null>(null);
   const [dniResult, setDniResult] = useState<DniVerificationResult | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
   const [activePollId, setActivePollId] = useState(DEFAULT_POLL.id);
@@ -562,7 +810,7 @@ function CivicApp() {
   };
 
   const startVote = async (pollId: string) => {
-    setActivePollId(pollId); setChoice(null); setReceipt(null); setPreviewError(null); setDniResult(null); setFlowStage("verify");
+    setActivePollId(pollId); setPolicyDetailId(null); setChoice(null); setReceipt(null); setPreviewError(null); setDniResult(null); setFlowStage("verify");
     if (APP_MODE === "preview") {
       try {
         const { createFixtureEligibilityProvider, PRIVATE_STATE_ID } = await import("midnight-referendum-api");
@@ -571,8 +819,6 @@ function CivicApp() {
           : null;
         const result = await createFixtureEligibilityProvider(previousState?.voterSecret).attest(passportSession, pollId);
         setEligibility(result);
-        // The organizer issues this commitment on-chain (deploy:preview --issue)
-        // before the vote can find its Merkle path.
         if (result.attestation?.subjectCommitment) {
           console.info(
             "[referendum] eligibility commitment:",
@@ -608,9 +854,10 @@ function CivicApp() {
     setFlowStage("review");
   };
 
-  const currentTabContent = useMemo(() => tab === "understand" ? <UnderstandView /> : tab === "verify" ? <VerifyView receipts={receipts} /> : tab === "profile" ? <ProfileView passportSession={passportSession} profileId={profileId} receipts={receipts} walletStatus={walletStatus} onConnectPassport={() => void connectPassport()} /> : <VotesView onStartVote={startVote} />, [passportSession, profileId, receipts, tab, walletStatus]);
-  const navigate = (nextTab: Tab) => { setTab(nextTab); setFlowStage(null); setReceiptToastVisible(false); };
-  return <div className="app-shell"><Header passportSession={passportSession} passportError={passportError} onConnectPassport={() => void connectPassport()} onDismissPassportError={() => setPassportError(null)} /><div className="mode-strip"><div className="mode-copy"><span><span className="status-dot" />{previewReadiness.label}</span><span className="mode-help">{passportSession ? "Passport conectado · wallet separado" : APP_MODE === "preview" ? "Wallet DApp Connector para votar" : "Solo lectura, sin transacciones"}</span></div><details className="mode-details"><summary aria-label="Qué significa este estado"><Info size={14} /><span>Info</span></summary><p>{previewReadiness.message}</p></details></div>{flowStage ? <VoteFlow stage={flowStage} choice={choice} onChoice={setChoice} onStage={setFlowStage} onClose={() => setFlowStage(null)} onConfirm={() => void confirmVote()} onViewReceipt={() => { setFlowStage(null); setTab("verify"); }} walletStatus={walletStatus} passportSession={passportSession} onConnectPassport={() => void connectPassport()} previewError={previewError} receipt={receipt} previewReady={previewReadiness.state === "ready"} dustBalance={dustBalance} pollId={activePollId} dniResult={dniResult} onDniVerified={(result) => { setDniResult(result); setFlowStage("eligible"); }} /> : currentTabContent}<BottomNav tab={tab} onChange={navigate} />{receipt && receiptToastVisible ? <div className="receipt-toast" role="status"><button type="button" className="receipt-toast-open" onClick={() => { setReceiptToastVisible(false); setFlowStage(null); setTab("verify"); }}><CheckCircle size={18} /> Último comprobante listo <ArrowRight size={16} /></button><button type="button" className="receipt-toast-close" onClick={() => setReceiptToastVisible(false)} aria-label="Cerrar notificación"><X size={15} /></button></div> : null}</div>;
+  const currentTabContent = useMemo(() => tab === "understand" ? <UnderstandView onOpenPolicy={setPolicyDetailId} /> : tab === "verify" ? <VerifyView receipts={receipts} /> : tab === "profile" ? <ProfileView passportSession={passportSession} profileId={profileId} receipts={receipts} walletStatus={walletStatus} onConnectPassport={() => void connectPassport()} /> : <VotesView onStartVote={startVote} onOpenPolicy={setPolicyDetailId} />, [passportSession, profileId, receipts, tab, walletStatus]);
+  const selectedPolicy = policyDetailId ? POLLS.find((poll) => poll.id === policyDetailId) ?? null : null;
+  const navigate = (nextTab: Tab) => { setTab(nextTab); setFlowStage(null); setPolicyDetailId(null); setReceiptToastVisible(false); };
+  return <div className="app-shell"><Header passportSession={passportSession} passportError={passportError} onConnectPassport={() => void connectPassport()} onDismissPassportError={() => setPassportError(null)} /><div className="mode-strip"><div className="mode-copy"><span><span className="status-dot" />{previewReadiness.label}</span><span className="mode-help">{passportSession ? "Passport conectado · wallet separado" : APP_MODE === "preview" ? "Wallet DApp Connector para votar" : "Solo lectura, sin transacciones"}</span></div><details className="mode-details"><summary aria-label="Qué significa este estado"><Info size={14} /><span>Info</span></summary><p>{previewReadiness.message}</p></details></div>{flowStage ? <VoteFlow stage={flowStage} choice={choice} onChoice={setChoice} onStage={setFlowStage} onClose={() => setFlowStage(null)} onConfirm={() => void confirmVote()} onViewReceipt={() => { setFlowStage(null); setTab("verify"); }} walletStatus={walletStatus} passportSession={passportSession} onConnectPassport={() => void connectPassport()} previewError={previewError} receipt={receipt} previewReady={previewReadiness.state === "ready"} dustBalance={dustBalance} pollId={activePollId} dniResult={dniResult} onDniVerified={(result) => { setDniResult(result); setFlowStage("eligible"); }} /> : selectedPolicy ? <PolicyDetailView poll={selectedPolicy} onBack={() => setPolicyDetailId(null)} onStartVote={startVote} /> : currentTabContent}<BottomNav tab={tab} onChange={navigate} />{receipt && receiptToastVisible ? <div className="receipt-toast" role="status"><button type="button" className="receipt-toast-open" onClick={() => { setReceiptToastVisible(false); setFlowStage(null); setTab("verify"); }}><CheckCircle size={18} /> Último comprobante listo <ArrowRight size={16} /></button><button type="button" className="receipt-toast-close" onClick={() => setReceiptToastVisible(false)} aria-label="Cerrar notificación"><X size={15} /></button></div> : null}</div>;
 }
 
 export function App() {
