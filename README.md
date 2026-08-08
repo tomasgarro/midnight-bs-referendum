@@ -278,11 +278,28 @@ where the edges are.
 | --- | --- |
 | Contract | `71644dd931b8f862119f78c57fd1cc9d8f3601a7a1e892de414c77db24aecd38` |
 | DUST registration tx | `0034a5b1b8d5a004b49fb84d7af0bf177b8ba16ef6a741e95673fa4660a2503f3f` |
+| Eligibility issued tx | `48fbbfa5c27ffb12f0573bce353dd172b0030e91ab860daf5243437bb3e873df` |
+| **`castVote` tx** | `31882c56d7d7589c20abf4a832e4a9c106c648345baa24de860ea67bdfd0f440` |
 
 The deployment went out **through the relayer**, so it is also proof of the
 whole sponsored path: the browser-side provider set balanced an unbound
 transaction against the relayer's coins, proved it on a local proof server,
 and submitted it. No wallet was involved at any point.
+
+A real ballot is now on chain. `castVote` landed in block 331474 with status
+`SucceedEntirely`, authorised purely by Merkle membership and the nullifier —
+the submitting relayer is not the voter and cannot be linked to the ballot.
+Two follow-up checks confirm the contract is actually enforcing what it claims:
+
+- Re-running the same secret is rejected on chain with
+  `failed assert: This voter has already voted in this referendum` — the
+  nullifier prevents double voting.
+- A secret that was never issued fails before any proving with
+  `This wallet is not present in the referendum eligibility tree`.
+
+Reproduce it with [`scripts/cast-vote-e2e.mjs`](scripts/cast-vote-e2e.mjs).
+The tally reads `phase: COMMIT` with an empty `tally` — correct for
+commit–reveal, since ballots stay hidden until the organizer reveals them.
 
 ### Working and verified
 
@@ -298,13 +315,19 @@ and submitted it. No wallet was involved at any point.
 - [x] Live tally read from the contract; no hardcoded figures.
 - [x] Local read-only mode that cannot fabricate a receipt.
 - [x] 62 tests; all three workspaces typecheck.
+- [x] **A real `castVote` on Preview**, with double-vote and ineligible-voter
+      rejection both observed on chain (see above).
 
 ### Not yet verified
 
-- [ ] **A real `castVote`.** Deploy proves the pipeline, but voting also needs
-      an eligibility commitment in the Merkle tree
-      (`npm run deploy:preview -- --issue <64-hex>`). This is the last gap
-      between "deployed" and "demonstrably voted".
+- [ ] **`castVote` from the browser.** The vote above was proved and submitted
+      from Node against the same providers, relayer, and proof server the UI
+      uses; the browser path shares that code but has not itself put a ballot
+      on chain.
+- [ ] **Counting a referendum.** `closeVote`, `revealVote`, and `finalizeVote`
+      exist in the contract and the executor and are covered by the simulator,
+      but they have never been run against Preview and have no interface, so a
+      live referendum can be voted in and not yet counted.
 - [ ] **The camera path against a physical DNI.** Parsing is unit-tested
       against synthetic payloads; live PDF417 decoding has not been run, and
       ZXing thresholds will likely need tuning. Needs a phone on
