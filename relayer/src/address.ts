@@ -1,3 +1,4 @@
+import * as rx from "rxjs";
 import { MidnightBech32m } from "@midnight-ntwrk/wallet-sdk-address-format";
 import { loadConfig } from "./config.js";
 import { startRelayerWallet } from "./wallet.js";
@@ -14,11 +15,13 @@ import { startRelayerWallet } from "./wallet.js";
  */
 const config = loadConfig();
 console.log(`network: ${config.networkId}`);
-console.log("syncing to read addresses…");
 
 const wallet = await startRelayerWallet(config);
 try {
-  const state = await wallet.facade.waitForSyncedState();
+  // Addresses derive from the seed, so the first emitted state already has
+  // them. Waiting for a full sync here just to print an address can cost
+  // minutes on a fresh wallet — and this is the step that blocks funding.
+  const state = await rx.firstValueFrom(wallet.facade.state());
   console.log("");
   const bech32 = (item: unknown) =>
     MidnightBech32m.encode(config.networkId, item as never).asString();
