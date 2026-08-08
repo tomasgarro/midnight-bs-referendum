@@ -33,5 +33,8 @@
     "typescript": "^5.7.0",
     "vitest": "4.1.0"
   },
-  "packageManager": "npm@10"
+  "packageManager": "npm@10",
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+  }
 }

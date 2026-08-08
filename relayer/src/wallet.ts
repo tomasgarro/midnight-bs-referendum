@@ -60,7 +60,13 @@ export async function startRelayerWallet(config: RelayerConfig): Promise<Relayer
 
   const configuration: DefaultConfiguration = {
     networkId: config.networkId,
-    costParameters: { feeBlocksMargin: 5 },
+    // additionalFeeOverhead guards against the node client reporting zeroed
+    // ledger parameters after an RPC disconnect: with a zero fee estimate the
+    // dust balancer selects no coins and emits an empty intent, which the node
+    // rejects as TransactionMalformed(NotNormalized) (custom error 117). The
+    // overhead (~2e15 SPECKs ≈ 0.002 DUST, ~5x a castVote fee) keeps the spend
+    // list non-empty and the transaction normalized; any excess is change.
+    costParameters: { feeBlocksMargin: 5, additionalFeeOverhead: 2_000_000_000_000_000n },
     relayURL: new URL(config.relayUrl),
     provingServerUrl: new URL(config.provingServerUrl),
     indexerClientConnection: {
@@ -128,6 +134,17 @@ export async function balanceAndFinalize(
   const recipe = await wallet.facade.balanceUnboundTransaction(tx, wallet.secretKeys, {
     ttl: new Date(Date.now() + BALANCE_TTL_MS),
   });
+  const recipeBalancing = (recipe as { balancingTransaction?: { toString(c?: boolean): string } })
+    .balancingTransaction;
+  const spendCount = recipeBalancing
+    ? (recipeBalancing.toString(true).match(/DustSpend/g) ?? []).length
+    : 0;
+  console.log(`[relayer] balanced: recipe=${recipe.type} dustSpends=${spendCount}`);
+  if (recipeBalancing && spendCount === 0) {
+    console.warn(
+      "[relayer] WARNING: dust balancing selected no coins — the node will reject this as NotNormalized",
+    );
+  }
   return wallet.facade.finalizeRecipe(recipe);
 }
 

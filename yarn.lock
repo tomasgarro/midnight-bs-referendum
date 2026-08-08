@@ -409,11 +409,6 @@
     "@midnight-ntwrk/midnight-js-protocol" "4.1.1"
     "@midnight-ntwrk/wallet-sdk-address-format" "^3.1.0"
 
-"@midnight-ntwrk/onchain-runtime-v3@^3.0.0":
-  version "3.1.0"
-  resolved "https://registry.npmjs.org/@midnight-ntwrk/onchain-runtime-v3/-/onchain-runtime-v3-3.1.0.tgz"
-  integrity sha512-TzxVsoxq9m7+gcS/sTQSgglsOmf7RcdPtonUwDpwwfsKeKJbrhZc9XlRm5TEDYPZhK6XCF0oHXRf4floohQjqw==
-
 "@midnight-ntwrk/onchain-runtime-v3@3.0.0":
   version "3.0.0"
   resolved "https://registry.npmjs.org/@midnight-ntwrk/onchain-runtime-v3/-/onchain-runtime-v3-3.0.0.tgz"
