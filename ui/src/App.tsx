@@ -569,7 +569,16 @@ function CivicApp() {
         const previousState = providers
           ? await providers.privateStateProvider.get(PRIVATE_STATE_ID)
           : null;
-        setEligibility(await createFixtureEligibilityProvider(previousState?.voterSecret).attest(passportSession, pollId));
+        const result = await createFixtureEligibilityProvider(previousState?.voterSecret).attest(passportSession, pollId);
+        setEligibility(result);
+        // The organizer issues this commitment on-chain (deploy:preview --issue)
+        // before the vote can find its Merkle path.
+        if (result.attestation?.subjectCommitment) {
+          console.info(
+            "[referendum] eligibility commitment:",
+            [...result.attestation.subjectCommitment].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
+          );
+        }
       } catch (error) {
         setPreviewError(error instanceof Error ? error.message : "No se pudo validar la elegibilidad");
       }
