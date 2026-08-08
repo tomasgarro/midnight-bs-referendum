@@ -1,0 +1,32 @@
+{
+  "name": "midnight-referendum-relayer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc --build --force",
+    "start": "node --env-file-if-exists=.env dist/server.js",
+    "dev": "tsc --build && node --env-file-if-exists=.env dist/server.js",
+    "address": "tsc --build && node --env-file-if-exists=.env dist/address.js",
+    "dust": "tsc --build && node --env-file-if-exists=.env dist/register-dust.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/wallet-sdk-abstractions": "^2.1.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "^3.1.2",
+    "@midnight-ntwrk/wallet-sdk-dust-wallet": "^4.1.0",
+    "@midnight-ntwrk/wallet-sdk-facade": "^4.0.1",
+    "@midnight-ntwrk/wallet-sdk-hd": "^3.0.2",
+    "@midnight-ntwrk/wallet-sdk-shielded": "^3.0.1",
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "^3.1.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.6"
+  }
+}
