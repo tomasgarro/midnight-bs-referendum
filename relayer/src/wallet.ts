@@ -26,6 +26,11 @@ export interface RelayerWallet {
     shieldedSecretKeys: ledger.ZswapSecretKeys;
     dustSecretKey: ledger.DustSecretKey;
   };
+  /**
+   * Needed to sign DUST registration: only the owner of the NIGHT UTXOs can
+   * register them, so no other wallet can do it on the relayer's behalf.
+   */
+  unshieldedKeystore: ReturnType<typeof createKeystore>;
   stop(): Promise<void>;
 }
 
@@ -90,6 +95,7 @@ export async function startRelayerWallet(config: RelayerConfig): Promise<Relayer
   return {
     facade,
     secretKeys: { shieldedSecretKeys, dustSecretKey },
+    unshieldedKeystore,
     stop: () => facade.stop(),
   };
 }

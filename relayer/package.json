@@ -9,6 +9,7 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "dev": "tsc --build && node --env-file-if-exists=.env dist/server.js",
     "address": "tsc --build && node --env-file-if-exists=.env dist/address.js",
+    "dust": "tsc --build && node --env-file-if-exists=.env dist/register-dust.js",
     "test": "vitest run"
   },
   "dependencies": {

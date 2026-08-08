@@ -21,6 +21,7 @@
     "verify:linux": "bash scripts/verify-linux.sh",
     "relayer": "npm run dev --workspace midnight-referendum-relayer",
     "relayer:address": "npm run address --workspace midnight-referendum-relayer",
+    "relayer:dust": "npm run dust --workspace midnight-referendum-relayer",
     "deploy:preview": "node --env-file-if-exists=relayer/.env scripts/deploy-referendum.mjs",
     "build": "npm run sync:contract && npm run build --workspace midnight-referendum-api && npm run build --workspace midnight-referendum-ui",
     "test": "npm run test:sim && npm run test --workspace midnight-referendum-api && npm run test --workspace midnight-referendum-ui"
