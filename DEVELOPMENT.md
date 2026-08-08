@@ -3,6 +3,36 @@
 This repository is the public code boundary. Keep Obsidian notes, recordings,
 credentials, and other private material in the parent vault.
 
+## The one checkout
+
+The working copy lives at `~/src/referendum` inside WSL. There is no second
+copy: work was previously split across a `/mnt/c` checkout and a separate clone
+pointing at a different git remote, and edits were lost between them. Both old
+directories now carry a `MOVED.md`.
+
+Staying on ext4 rather than `/mnt/c` is not cosmetic — the UI test suite runs
+in about 7 seconds here and took over 7 minutes on the Windows filesystem.
+
+## Running it locally
+
+Everything runs on `localhost`; there is no hosted deployment. Passport
+passkeys and `getUserMedia` both accept `http://localhost`, so no HTTPS or
+tunnel is needed.
+
+Three processes:
+
+```bash
+docker start referendum-proof-server   # published on 127.0.0.1:6300
+npm run relayer                        # sponsored fee payer, 127.0.0.1:8790
+npm run dev -- --host localhost --port 4173 --strictPort
+```
+
+The proof server must be **published** to the host. A container started with
+`--expose` alone is unreachable from both the browser and the relayer, and
+every proof then fails with a connection error that reads like a wallet fault.
+See [relayer/README.md](relayer/README.md) for the funding steps and the trust
+boundary.
+
 ## Canonical environment: Linux/WSL2
 
 All Node, npm, Compact, test, and build commands must run inside Linux or
@@ -82,7 +112,8 @@ cp ui/.env.example ui/.env
 
 Use `VITE_APP_MODE=preview` only after setting a deployed contract address and
 connecting a Preview-compatible DApp Connector wallet. The default mode is the
-wallet-less demo.
+wallet-less, read-only demo. It never creates a simulated receipt; only a
+canonical Preview confirmation is written to the local profile history.
 
 ## Run and test
 

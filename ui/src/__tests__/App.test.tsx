@@ -26,4 +26,27 @@ describe("App", () => {
     expect(screen.getByText("Identificador de perfil")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Tu identidad .night" })).toBeTruthy();
   });
+
+  it("sends eligibility through the document check rather than waving it through", async () => {
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Votá ahora" }));
+    await user.click(screen.getByRole("button", { name: "Validar elegibilidad" }));
+
+    // Eligibility now requires a real document step; it no longer jumps
+    // straight to "you may vote".
+    expect(screen.getByRole("heading", { name: "Escaneá el dorso de tu DNI" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Continuar al voto" })).toBeNull();
+    expect(screen.getByText(/El documento no sale de tu teléfono/)).toBeTruthy();
+  });
+
+  it("does not create a fake receipt in local mode", async () => {
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Votá ahora" }));
+    await user.click(screen.getByRole("button", { name: "Validar elegibilidad" }));
+    // Nothing reachable without a wallet may mint a receipt.
+    expect(screen.queryByText("Último comprobante listo")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirmar compromiso en Preview" })).toBeNull();
+  });
 });

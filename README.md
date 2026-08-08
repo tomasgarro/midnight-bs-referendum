@@ -1,307 +1,287 @@
-# Hack Buenos Aires — Anonymous Civic Referendum
+# Referéndum Cívico
 
-Hack Buenos Aires is a privacy-first civic participation prototype built on
-the Midnight Network. It explores how citizens can participate in a public
-referendum while proving eligibility and one-person-one-vote without exposing
-their identity or ballot choice.
+**Anonymous, verifiable civic consultation on the Midnight Network.**
 
-This is an independent hackathon project, not an official government
-referendum. The current release is a jury-facing v0: the complete local UX/UI,
-privacy model, contract implementation, and Linux/WSL development workflow are
-available; real Preview wallet execution and production identity issuance
-remain explicit next steps.
+A citizen proves they are eligible to vote, votes once, and gets a receipt they
+can check — without anyone, including us, being able to link them to their
+ballot. No wallet, no browser extension, no seed phrase, no tokens.
+
+Built for Hack Buenos Aires. This is an independent prototype, not an official
+referendum.
+
+---
 
 ## The problem
 
-Digital civic consultations usually force a difficult compromise:
+Digital civic consultation forces a choice that shouldn't have to be made.
 
-- Centralized systems can link a person to a vote and create a high-value
-  identity database.
-- Public ledgers can make participation auditable, but naïve ballots expose
-  choices or wallet identities.
-- Traditional blockchain onboarding introduces seed phrases, extensions,
-  unfamiliar addresses, and transaction-fee friction.
-- Citizens and organizers need both privacy and credible guarantees that only
-  eligible people vote once.
+**Centralised platforms** know who voted for what. Even when they promise not
+to look, the database exists — and a database that links a citizen to a
+political opinion is a permanent liability: subpoenaed, breached, sold, or
+quietly used for targeting. Trust rests entirely on the operator's word.
+
+**Public ledgers** fix auditability and break privacy. Put ballots on a chain
+and you get a permanent, globally searchable record of who voted how, keyed to
+a wallet address that is rarely as anonymous as people assume.
+
+**Blockchain onboarding** excludes the people civic tech most needs to reach.
+Install an extension, safeguard a seed phrase, understand gas, acquire tokens —
+before casting a single vote. For a municipal consultation aimed at the general
+public, this is a non-starter.
+
+And underneath all three: **proving eligibility usually means surrendering
+identity.** The normal way to prove you may vote is to hand over your ID
+document to whoever is asking.
+
+## The opportunity
+
+Midnight can hold a ledger that is publicly auditable while the data that
+produced it stays private. That makes a specific, previously awkward thing
+possible: **prove membership in a set of eligible voters, and prove you have
+not voted before, without revealing which member you are.**
+
+Argentina makes this concrete. The DNI card carries a PDF417 barcode with the
+holder's date of birth and document number — readable by any phone camera, with
+no registry integration required. Eligibility can be established on the
+citizen's own device, and only a derived, non-reversible tag ever leaves it.
+
+Meanwhile Midnight Passport removes onboarding friction with passkey-based
+identity. Combined, they allow the honest pitch: *Passport makes it usable,
+Midnight makes it private, and the citizen never installs anything.*
 
 ## The solution
 
-The referendum separates the user-facing identity from the anonymous ballot:
+Three secrets that never meet.
 
-1. Midnight Passport handles passkey onboarding, profile consent, and the
-   display identity.
-2. A separate private voter secret is used for anonymous eligibility and
-   proposal-scoped nullifiers; it is never derived from the Passport profile or
-   wallet identity.
-3. A Compact commit/reveal contract privately commits YES, NO, or ABSTAIN,
-   checks anonymous Merkle membership, blocks duplicate votes, and publishes
-   aggregates only during reveal.
-4. The official Midnight DApp Connector remains the approval boundary for
-   wallet proving, balancing, and contract submission until Passport supports
-   generic contract execution.
+| | Knows | Never knows |
+|---|---|---|
+| **Passport identity** | Your display name and profile | Your vote |
+| **Voter secret** | That someone eligible voted once | Who you are |
+| **Ballot choice** | Joins the public total after the close | Who cast it |
 
-This gives the prototype a clear privacy boundary: Passport can make the
-experience understandable and accountable to the user without becoming the
-ballot identity.
+The eligibility check happens on your device. Your vote is sealed as a
+cryptographic commitment. A **sponsored relayer** pays the network fee, so you
+never need a wallet. The contract accepts the vote because you proved
+membership in the eligible set and produced a nullifier nobody has seen —
+never because of who submitted it.
 
-## What the v0 demonstrates
+```mermaid
+flowchart TD
+    A[Citizen opens the app] --> B[Passport: passkey onboarding, optional profile]
+    B --> C[Scan DNI barcode — decoded in-browser]
+    C --> D[Age check + presence check, on-device]
+    D --> E[Blinded uniqueness tag → issuer]
+    E --> F[Eligibility commitment enters the Merkle tree]
+    F --> G[Choose YES / NO / ABSTAIN]
+    G --> H[Browser proves castVote locally]
+    H --> I[Relayer balances DUST and submits]
+    I --> J[Contract verifies membership + nullifier]
+    J --> K[Receipt with canonical tx hash]
+```
 
-### Citizen experience
+### Why a relayer, and not a wallet
 
-- Wallet-less demo mode for exploring the complete UX/UI without credentials.
-- Spanish civic referendum flow with proposal detail, voting explanation,
-  verification, and profile space.
-- Compact four-step mental model: understand, vote, verify, and review profile.
-- Explicit separation between “Passport identity connected” and “wallet
-  approval required”.
-- Local participation receipts with proposal, timestamp, status, and explorer
-  link; vote choice is not stored in Passport-backed history.
-- .night / Midnight Domains profile shell with an external claim CTA.
+Midnight Passport exposes exactly two bridges to third-party apps: a profile
+bridge, and a transaction bridge whose only intent kind is
+`unshielded-transfer`. Its own specification is explicit — *"No contract calls,
+shielded transfers, or batching."* **Passport cannot sign a Compact circuit
+call.**
 
-### Privacy and protocol
+The alternative would be making every citizen install Lace and hold DUST, which
+defeats the point. So we took the third path: the referendum contract
+authorises `castVote` on **anonymous Merkle membership plus a proposal-scoped
+nullifier**, and never on the submitter's identity
+([`referendum.compact`](contracts/referendum/referendum.compact)). A funded
+relayer can therefore pay for and submit a vote it did not author, and gains no
+power over it.
 
-- Private YES/NO/ABSTAIN commit input.
-- Commit, reveal, and finalized phases.
-- Historic Merkle eligibility membership supporting a growing registry.
-- Proposal-scoped nullifiers preventing duplicate voting without exposing the
-  voter secret.
-- Anonymous reveal that updates only aggregate YES/NO/ABSTAIN counters.
-- Organizer-only close and finalize authorization.
-- Deterministic local eligibility fixture for the hackathon path.
-- No raw identity documents, voter secrets, salts, or nullifiers in
-  localStorage, backend state, or Compact public state.
+## Features
 
-### Midnight integrations
+**Citizen experience**
+- Wallet-less voting: no extension, no seed phrase, no tokens.
+- Midnight Passport onboarding with per-field consent.
+- Real eligibility: camera scan of the DNI's PDF417 barcode, decoded on-device.
+- Presence check: a randomised prompt sequence scored from frame motion.
+- Spanish civic UI with a plain-language explainer of exactly what is public.
+- Local participation receipts with canonical explorer links.
 
-- Strict Passport profile bridge using exact-origin postMessage validation,
-  source-window checks, request IDs, nonces, and timeouts.
-- Midnight.js provider assembly with wallet configuration as the endpoint source
-  of truth.
-- FetchZkConfigProvider for served contract assets.
-- Wallet-delegated proving by default, with an explicit local proof-server
-  fallback.
-- DUST-aware balance/readiness checks and transaction lifecycle types.
-- Canonical indexer confirmation before explorer receipt links.
-- Rarimo and Blockenfy deliberately disabled until a real, tested Midnight
-  attestation verifier is available.
+**Privacy and protocol**
+- Private commit of YES / NO / ABSTAIN; only aggregates published at reveal.
+- Historic Merkle tree for a growing eligibility registry.
+- Proposal-scoped nullifiers: one person, one vote, unlinkable across
+  referenda.
+- Organizer-only close and finalize.
+- Document data never uploaded; only a salted, per-referendum uniqueness tag
+  leaves the device.
+- Voter secrets held in IndexedDB under a non-extractable WebCrypto key.
 
-## Technology and tools
+**Infrastructure**
+- Sponsored relayer that balances and submits on the citizen's behalf.
+- Deploy and eligibility-issuance scripts for Midnight Preview.
+- Origin-pinned, nonce-bound Passport bridge matching the published protocol.
 
-| Area | Tools |
+## Tools
+
+| Area | Stack |
 | --- | --- |
-| Smart contract | Compact, Compact CLI/compiler, generated contract driver |
-| Midnight runtime | Midnight.js, Compact Runtime, Ledger v8, DApp Connector API |
-| Frontend | React, TypeScript, Vite, Tailwind CSS |
-| Identity | Midnight Passport passkey/profile bridge |
-| Private state | WebCrypto AES-GCM and IndexedDB |
-| Testing | Vitest, Compact simulator, API/provider/Passport/UI tests |
-| Network target | Midnight Preview RPC, indexer, and wallet ecosystem |
-| Development OS | Linux/WSL2; Windows is only the host/browser when desired |
+| Smart contract | Compact 0.31.1, Compact CLI 0.5.1 |
+| Chain runtime | Midnight.js 4.1, Compact Runtime 0.16, Ledger v8.1 |
+| Relayer wallet | `@midnight-ntwrk/wallet-sdk-*` (facade 4.0.1) |
+| Frontend | React 19, TypeScript, Vite 7 |
+| Identity | Midnight Passport profile bridge (`org.midnight.passport.profile/v1`) |
+| Document scan | PDF417 via native `BarcodeDetector`, ZXing fallback |
+| Private state | WebCrypto AES-GCM + IndexedDB |
+| Testing | Vitest, Compact simulator — 62 tests |
+| Network | Midnight Preview |
 
-## Prerequisites
+## Getting started
 
-Run the toolchain inside Linux or WSL2. Do not use PowerShell npm for this
-project: mixing Windows node_modules with Linux dependencies breaks native
-bindings and can make the Compact workflow appear to work when it does not.
+### Requirements
 
-Required for the local demo and contract workflow:
+Everything runs on Linux or WSL2. The browser may be on Windows; the toolchain
+must not be.
 
-- Ubuntu or another Linux distribution under WSL2, preferably x86_64.
-- Git.
-- curl, a POSIX shell, and build tools available in the WSL distribution.
-- [nvm](https://github.com/nvm-sh/nvm).
-- Node.js 22.22.0, selected by the repository .nvmrc.
-- npm 10.x, supplied by the pinned Node release.
-- Midnight Compact CLI 0.5.1 and compiler 0.31.1.
-- A modern browser for WebCrypto, IndexedDB, and the local demo.
+- Ubuntu on WSL2, Node 22.22.0 (via `nvm` and the repo `.nvmrc`), npm 10
+- Compact CLI 0.5.1 / compiler 0.31.1
+- Docker, for the proof server
+- For real transactions: a Preview-funded seed for the relayer
 
-Required only for Preview wallet execution:
+Everything is served over `http://localhost`, which both Passport passkeys and
+the camera API accept. No HTTPS, tunnel, or hosting account is needed.
 
-- A compatible Midnight DApp Connector wallet, such as Lace, connected to
-  Preview.
-- A deployed referendum contract address.
-- Served generated contract/ZK assets.
-- Wallet-delegated proving, or the matching local Midnight Proof Server when
-  using the explicit fallback.
-- tDUST/DUST availability according to the current Preview setup.
+### Local demo — no wallet, no funds, no network
 
-Passport passkeys work from http://localhost, or from an HTTPS deployment.
-Do not use http://127.0.0.1 for Passport onboarding.
-
-## Fresh Linux/WSL setup
-
-Clone the repository into the Linux filesystem for better performance:
-
-~~~bash
-git clone https://github.com/tomasgarro/midnight-bs-referendum.git ~/src/midnight-referendum
-cd ~/src/midnight-referendum
-~~~
-
-Load the project Node version and Compact tools:
-
-~~~bash
-source ~/.nvm/nvm.sh
-nvm install
-nvm use
-export PATH="$HOME/.local/bin:$HOME/.compact/bin:$PATH"
-
-node --version
-npm --version
-compact --version
-compact compile --version
-~~~
-
-The official Compact installer may expose a compactc wrapper that does not
-resolve correctly through its version symlink. This project automatically uses
-compact compile when that happens; do not use Windows compact.exe, which is an
-unrelated NTFS command.
-
-Install workspaces, create the local environment file, compile the contract,
-build the API declarations, and run checks:
-
-~~~bash
+```bash
+git clone https://github.com/tomasgarro/midnight-referendum-app.git ~/src/referendum
+cd ~/src/referendum
+nvm install && nvm use
 bash scripts/setup-linux.sh
-~~~
-
-The setup script uses npm install --workspaces --include-workspace-root,
-recreates ignored Compact artifacts, and runs the deterministic checks when a
-working Compact compiler is available. The generated ZK keys, ZKIR files,
-dist, and local .env are not committed.
-
-For the complete Preview-oriented validation path:
-
-~~~bash
-npm run verify:linux -- preview
-~~~
-
-This runs contract compilation, simulator tests, API/UI/provider/Passport
-tests, asset synchronization, and the production build. It does not claim that
-a real Preview wallet transaction has been submitted.
-
-## Start the UX/UI flow
-
-The default mode is wallet-less demo mode:
-
-~~~bash
 npm run dev -- --host localhost --port 4173 --strictPort
-~~~
+```
 
-Open [http://localhost:4173](http://localhost:4173). The browser can run on
-Windows while the server, compiler, tests, and build remain in WSL.
+Open <http://localhost:4173>. You can walk the whole interface, scan a DNI (or
+use the clearly-labelled demo document), and read the explainer. Local mode is
+deliberately read-only: **it never fabricates a receipt.**
 
-The demo does not require Passport, Lace, a contract address, a proof server,
-or Preview funds. It provides the local proposal, commit/reveal explanation,
-simulated receipt, verification page, and profile history.
+### Real votes on Preview
 
-## Enable Preview mode
+Three processes. First the proof server — it must be **published** to the host,
+not merely exposed, or every proof fails with an error that looks like a wallet
+fault:
 
-Create or edit ui/.env from the template:
+```bash
+docker run -d --name referendum-proof-server -p 127.0.0.1:6300:6300 \
+  --restart unless-stopped midnightnetwork/proof-server \
+  -- midnight-proof-server --num-workers 4
+```
 
-~~~bash
-cp ui/.env.example ui/.env
-~~~
+Then the relayer. Generate its seed yourself; `relayer/.env` is gitignored and
+the seed is never logged or returned by any endpoint:
 
-Configure at least:
+```bash
+cp relayer/.env.example relayer/.env
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # → RELAYER_SEED
+npm run relayer:address     # prints the address to fund
+```
 
-~~~dotenv
-VITE_APP_MODE=preview
-VITE_MIDNIGHT_CONTRACT_ADDRESS=your_deployed_contract_address
-~~~
+Send Preview NIGHT to that address and **register it for DUST generation**.
+NIGHT alone is not enough — without DUST the relayer cannot pay for anything.
 
-For the explicit local proof-server fallback only:
+```bash
+npm run deploy:preview      # deploys and writes the address into ui/.env
+npm run relayer             # 127.0.0.1:8790
+npm run dev -- --host localhost --port 4173 --strictPort
+```
 
-~~~dotenv
-VITE_MIDNIGHT_PROOF_SERVER_URL=http://localhost:6300
-~~~
+Set `VITE_APP_MODE=preview` in `ui/.env` and restart the dev server.
 
-Then compile, synchronize, and build:
+### Verify
 
-~~~bash
-npm run compile
-npm run build
-~~~
+```bash
+npm test        # 62 tests: 3 contract simulator, 1 api, 58 ui
+```
 
-Preview service endpoints are:
+## Privacy model
 
-- Node RPC: https://rpc.preview.midnight.network
-- Indexer GraphQL: https://indexer.preview.midnight.network/api/v4/graphql
-- Local proof-server fallback: http://localhost:6300
+**Public on-chain:** that a valid vote was cast; a nullifier preventing a
+second one; the YES/NO/ABSTAIN totals after the close.
 
-Provider endpoints come from the connected wallet configuration. The proof
-server is explicit and is never inferred from a substrate node port.
+**Never leaves the device:** your name, document number and photograph; your
+choice while voting is open; any link between your identity and your ballot.
 
-## Roadmap and handoff status
+**What the relayer sees:** the proven transaction — which carries the nullifier
+and the sealed commitment — and your IP. It cannot read your choice, and cannot
+tell which eligibility leaf you used, because membership is proved in zero
+knowledge. It can refuse to submit, which is a liveness risk, not a privacy
+one.
 
-This section is intentionally explicit so a new engineer or AI coding agent
-can continue from the GitHub repository without confusing local readiness with
-Preview production readiness.
+**What the proof server sees:** the witness, meaning your voter secret and your
+choice. This is why it must run on your own machine.
+`VITE_MIDNIGHT_PROOF_SERVER_URL` pointing at someone else's host hands them the
+ballot in plaintext.
 
-### Finalized and tested in the current v0
+**What this does not prove:** reading a barcode proves possession of a
+document's data, not that the document is genuine — that needs the chip and
+RENAPER. The presence check defeats a held-up photograph; it is not a biometric
+match against the document, and not proof against a prepared video replay. The
+contract has not been audited.
 
-- [x] Compact commit/reveal contract with YES, NO, and ABSTAIN.
-- [x] Separate COMMIT, REVEAL, and FINALIZED phases.
-- [x] Historic Merkle eligibility membership.
-- [x] Proposal-scoped nullifiers and duplicate-vote protection.
-- [x] Anonymous reveal with aggregate-only result updates.
-- [x] Organizer close/finalize authorization in the contract layer.
-- [x] Generated contract driver and typed Midnight.js executor wiring.
-- [x] Passport origin/source/request-ID/nonce/timeout validation.
-- [x] Passport profile identity kept separate from the anonymous voter secret.
-- [x] Encrypted IndexedDB private state with in-memory fallback for tests.
-- [x] Deterministic fixture eligibility provider.
-- [x] DApp Connector provider assembly and explicit Preview readiness matrix.
-- [x] DUST balance/readiness display and canonical receipt/indexer types.
-- [x] Four-tab citizen UI with Mi perfil and Midnight Domains shell.
-- [x] Demo mode without wallet, Passport, contract, or proof server.
-- [x] Linux/WSL setup scripts and cross-platform optional dependency lockfile.
-- [x] Native WSL validation: contract tests 3/3, API tests 1/1, UI tests
-  15/15, compilation, and production build passed.
+---
 
-### Still missing or unverified
+## Status and what remains
 
-- [ ] A deployed referendum contract address on Midnight Preview.
-- [ ] Full real-wallet E2E: Passport onboarding, DApp Connector approval, DUST
-  balancing, proving, submission, and canonical indexer confirmation.
-- [ ] Organizer-facing reveal, close, and finalize UI.
-- [ ] Citizen-facing reveal timing and finalized result presentation.
-- [ ] Production eligibility issuer and a tested Midnight attestation verifier.
-  Rarimo and Blockenfy must remain disabled until then.
-- [ ] Production Passport onboarding from an HTTPS deployment and exact
-  Passport contract-identity behavior.
-- [ ] Read-only .night resolution through @midnames/sdk.
-- [ ] In-app .night claiming after wallet approval, DUST/payment, and write
-  operation behavior are verified.
-- [ ] Production monitoring, analytics, error reporting, and accessibility
-  audit with real civic users.
-- [ ] Security review of the deployed contract, proof flow, eligibility issuer,
-  and browser private-state recovery model.
+Honest accounting, so a human or an AI agent can pick this up and know exactly
+where the edges are.
 
-### Recommended next sequence
+### Working and verified
 
-1. Deploy the current generated contract to Preview and record its address in a
-   private local ui/.env.
-2. Run the complete real-wallet flow with Lace and capture transaction IDs,
-   DUST behavior, explorer links, and indexer confirmation.
-3. Add organizer reveal/close/finalize screens and test the phase transitions
-   against the deployed contract.
-4. Choose and implement one real eligibility attestation adapter with a
-   verifier test before connecting any external issuer.
-5. Implement read-only Midnight Domains lookup, then evaluate claiming as a
-   separate wallet/payment feature.
-6. Perform a privacy/security review before presenting the app as a production
-   civic system.
+- [x] Compact commit/reveal contract; simulator covers double-vote, replay
+      reveal, and organizer-only finalize.
+- [x] Passport profile bridge conformant with the published protocol —
+      embedded-mode handshake adoption, 180 s budget, closed-popup detection.
+- [x] DNI PDF417 parsing, age check, salted uniqueness tag, presence scoring
+      (34 unit tests).
+- [x] Relayer runs against live Preview: syncs, and serves correct Bech32m
+      addresses and keys, CORS-restricted with input validation.
+- [x] Deploy and `--issue` scripts.
+- [x] Local read-only mode that cannot fabricate a receipt.
 
-## Contribution boundary
+### Not yet verified
 
-Do not commit .env, credentials, wallet seeds, raw identity documents,
-generated ZK keys, ZKIR files, or private vault/Obsidian material. Keep
-generated artifacts reproducible through npm run compile and
-npm run sync:contract.
+- [ ] **A real `castVote` on Preview.** Everything is wired and typechecks, but
+      no transaction has been submitted end to end. Blocked only on a funded
+      relayer seed. This is the single most valuable next step.
+- [ ] **The camera path against a physical DNI.** Parsing is unit-tested
+      against synthetic payloads; live PDF417 decoding has not been run, and
+      ZXing thresholds will likely need tuning. Needs a phone on
+      `http://localhost:4173`.
+- [ ] **Relayer balancing under load** — `/balance` and `/submit` have not been
+      exercised with a real transaction.
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for the operational setup and
-[contracts/referendum/README.md](contracts/referendum/README.md) for contract
-guarantees and compilation notes.
+### To build next
+
+1. **Organizer console** — `closeVote`, `revealVote`, `finalizeVote` exist in
+   the contract and executor but have no UI. Without it a referendum can be
+   voted in but never counted. Start at
+   [`api/src/index.ts`](api/src/index.ts) `createReferendumExecutor`.
+2. **Verificá should query the indexer.** It currently only searches
+   `localStorage`, so a receipt from another device cannot be checked — which
+   undercuts the public-verifiability claim. See `VerifyView` in
+   [`ui/src/App.tsx`](ui/src/App.tsx).
+3. **Results presentation** — reveal-phase timing and a finalized-result view.
+4. **Issuer service.** `--issue` is operator-run; the uniqueness tag needs a
+   real endpoint that enforces one registration per document.
+5. **Recovery.** A voter secret lost with browser storage is a lost vote;
+   private-state export is deliberately disabled pending a design.
+6. **Rarimo / Blockenfy adapters** stay disabled until a tested Midnight
+   attestation verifier exists.
+7. **Security review** of the contract, the relayer trust boundary, and the
+   browser private-state model before this is described as production civic
+   infrastructure.
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the working setup and
+[relayer/README.md](relayer/README.md) for the relayer's trust boundary.
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache 2.0. See [LICENSE](LICENSE).
