@@ -351,7 +351,17 @@ export function createReferendumExecutor(
     },
     issue: (commitment) => call("issue", commitment),
     castVote: () => call("castVote"),
-    revealVote: (choice: VoteReveal["choice"], salt) => call("revealVote", choice, salt),
+    // The UI and the CLI both carry the choice as a string ("YES" | "NO" |
+    // "ABSTAIN"), but the circuit argument is the generated Choice enum, and
+    // passing the string through reaches the runtime as a type error at call
+    // time rather than at compile time. The voterChoice witness already does
+    // this conversion; the reveal argument has to do it too.
+    revealVote: (choice: VoteReveal["choice"], salt) =>
+      call(
+        "revealVote",
+        typeof choice === "string" ? (GeneratedReferendum.Choice as any)[choice] : choice,
+        salt,
+      ),
     closeVote: () => call("closeVote"),
     finalizeVote: () => call("finalizeVote"),
   };

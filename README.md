@@ -324,16 +324,37 @@ commit–reveal, since ballots stay hidden until the organizer reveals them.
       from Node against the same providers, relayer, and proof server the UI
       uses; the browser path shares that code but has not itself put a ballot
       on chain.
-- [ ] **Counting a referendum.** `closeVote`, `revealVote`, and `finalizeVote`
-      exist in the contract and the executor and are covered by the simulator,
-      but they have never been run against Preview and have no interface, so a
-      live referendum can be voted in and not yet counted.
+- [ ] **Finishing the count on Preview.** `closeVote` has now run against
+      Preview on a throwaway referendum
+      (`2c25fabe2d223de25b72247f365f17e5bc8370aeb6ad73826fb7cc1cb6ff757b`,
+      two ballots cast, phase moved to REVEAL). `revealVote` and `finalizeVote`
+      are driven by [`scripts/count-referendum.mjs`](scripts/count-referendum.mjs)
+      and covered by the simulator, but the reveal has not yet landed on chain:
+      the relayer ran out of DUST first (see below). There is still no
+      organizer interface, so counting is CLI-only.
 - [ ] **The camera path against a physical DNI.** Parsing is unit-tested
       against synthetic payloads; live PDF417 decoding has not been run, and
       ZXing thresholds will likely need tuning. Needs a phone on
       `http://localhost:4173`.
 - [ ] **The browser-side relayer path.** `/balance` and `/submit` are proven
       from Node during deploy, not yet from the browser.
+
+### The relayer is a single-coin bottleneck
+
+Worth knowing before a demo, because it looks like a contract bug and is not.
+The relayer holds one DUST coin. Balancing spends it and produces change, but
+the wallet only sees that change once it observes the block, so a second
+submission sent in the meantime spends a coin the chain already consumed and
+the node rejects it with `Invalid Transaction: Custom error: 170`
+(`InvalidDustSpendProof`). The next call then finds `availCoins=0` and fails
+with `Insufficient Funds: could not balance dust`, and DUST does not come back
+on its own: the wallet has locally marked the coin spent for a transaction
+that never landed, so it takes a relayer restart to re-derive state from chain.
+
+Space submissions out by a block, or restart the relayer if it reports
+`dustBalance: 0` while still holding NIGHT. A production relayer would
+serialize submissions behind confirmation of the previous change, and hold a
+pool of coins rather than one.
 
 ### To build next
 
